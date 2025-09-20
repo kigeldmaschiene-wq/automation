@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>TikTok & Instagram Automation (Supabase)</title>
   <style>
-    :root{--bg:#0b0c10;--card:#111318;--muted:#9aa4b2;--border:#1f2430;--brand:#00D09C;--ok:#22c55e}
+    :root{--bg:#0b0c10;--card:#111318;--muted:#9aa4b2;--border:#1f2430;--brand:#00D09C;--ok:#22c55e;--danger:#ef4444}
     *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial;background:var(--bg);color:#e5e7eb}
     .wrap{max-width:980px;margin:24px auto;padding:16px}
     .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:16px}
@@ -16,15 +16,19 @@
     button:disabled{opacity:.5;cursor:not-allowed}
     .row{display:grid;grid-template-columns:1fr 1fr; gap:12px}
     .row3{display:grid;grid-template-columns:1fr 1fr 1fr; gap:12px}
-    .hint{font-size:12px;color:var(--muted)}
+    .hint{font-size:12px;color:#9aa4b2}
     table{width:100%;border-collapse:collapse;font-size:13px}
     th,td{padding:8px;border-bottom:1px solid var(--border);text-align:left}
     tr.clickable{cursor:pointer}
     tr.clickable:hover{background:#0f141a}
     .badge{display:inline-block;background:#151a22;border:1px solid #273042;padding:3px 8px;border-radius:999px;margin-right:6px;font-size:11px}
     .status-ok{color:var(--ok);font-weight:700}
-    .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center}
     .toolbar input[type=file]{display:none}
+    .topbar{display:flex;gap:8px;align-items:center;justify-content:space-between}
+    .link{background:#263042;color:#e5e7eb;border:1px solid #273042}
+    .danger{background:transparent;border:1px solid var(--danger);color:#fecaca}
+    .hidden{display:none}
     @media (max-width:640px){ .row3{grid-template-columns:1fr} .row{grid-template-columns:1fr} }
   </style>
   <!-- Supabase JS v2 -->
@@ -38,223 +42,253 @@
 </head>
 <body>
   <div class="wrap">
-    <div class="card">
-      <h1>TikTok & Instagram Automation (mit Supabase)</h1>
-      <div class="hint">Daten werden zentral in Supabase gespeichert. Brand-Farbe: <span class="badge">#00D09C</span></div>
+    <div class="card topbar">
+      <div>
+        <h1 style="margin:0">TikTok & Instagram Automation (mit Supabase)</h1>
+        <div class="hint">Daten zentral gespeichert. Brand: <span class="badge">#00D09C</span></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button id="btnGoComposer">Composer</button>
+        <button id="btnGoSettings" class="link">Einstellungen</button>
+      </div>
     </div>
 
-    <div class="card" id="composerCard">
-      <h2>Composer</h2>
-      <div class="row3">
-        <div>
-          <label>Plattform</label>
-          <select id="platform"><option value="tiktok">TikTok</option><option value="instagram">Instagram</option></select>
+    <!-- Composer / Library View -->
+    <div id="viewMain">
+      <div class="card" id="composerCard">
+        <h2>Composer</h2>
+        <div class="row3">
+          <div>
+            <label>Plattform</label>
+            <select id="platform"><option value="tiktok">TikTok</option><option value="instagram">Instagram</option></select>
+          </div>
+          <div>
+            <label>Format</label>
+            <select id="format"><option value="post">Post / Reel</option><option value="story">Story (≤ 15s)</option></select>
+          </div>
+          <div>
+            <label>TikTok Modus</label>
+            <select id="ttMode"><option value="direct">Direct Post</option><option value="draft">Draft (Trend-Sound später)</option></select>
+          </div>
         </div>
-        <div>
-          <label>Format</label>
-          <select id="format"><option value="post">Post / Reel</option><option value="story">Story (≤ 15s)</option></select>
+
+        <div class="row3">
+          <div><label>Avatar</label><select id="avatar"><option>Avatar 1</option><option>Avatar 2</option><option>Avatar 3</option><option>Avatar 4</option></select></div>
+          <div><label>Stimme</label><select id="voice"><option>Katja (w, DE)</option><option>Conrad (m, DE)</option><option>Ingrid (w, AT)</option><option>Leni (w, CH)</option></select></div>
+          <div><label>Brand-Farbe</label><input type="color" id="brand" value="#00D09C" /></div>
         </div>
-        <div>
-          <label>TikTok Modus</label>
-          <select id="ttMode"><option value="direct">Direct Post</option><option value="draft">Draft (Trend-Sound später)</option></select>
+
+        <div><label>Look / Stil-Notiz</label><input id="look" placeholder="Hintergrund, Licht, Kleidung, Stimmung" value="Dunkler Hintergrund, Teal-Akzent, seriös, ruhige Mimik"/></div>
+
+        <div class="row3">
+          <div><label>Wasserzeichen</label><select id="wmOn"><option value="true">Aktiv</option><option value="false">Aus</option></select></div>
+          <div><label>Wasserzeichen-Text</label><input id="wmText" placeholder="@deinusername" value="@deinusername"/></div>
+          <div><label>Musik</label><select id="music"></select></div>
         </div>
+
+        <div><label>Hook</label><input id="hook" placeholder="Starker Einstiegssatz" value="90 % scheitern – vermeide diese 3 Fallen…"/></div>
+        <div><label>Skript (Voiceover)</label><textarea id="script" rows="5">Kurzer Beispiel-Text fürs Voiceover …</textarea></div>
+        <div><label>Hashtags</label><input id="tags" value="#kibusiness #digitalbusiness #futureofwork #arbeitmitki #onlinebusiness" /></div>
+        <div><label>Caption (Kurz-Titel)</label><input id="caption" placeholder="z. B. 'Mit KI in 7 Tagen starten'" /></div>
+        <div><label>TikTok Videobeschreibung</label><textarea id="ttDesc" rows="3" placeholder="Call-to-Action + Keywords + Hashtags"></textarea></div>
+
+        <div class="row">
+          <div><label>Datum</label><input id="date" type="date" /></div>
+          <div><label>Uhrzeit</label><select id="timeSel"></select></div>
+          <div style="display:flex;align-items:flex-end;justify-content:flex-end"><button id="planBtn" disabled>Planen / Starten</button></div>
+        </div>
+        <p class="hint">Nach dem Speichern erscheint der Eintrag unten in der Bibliothek (aus Supabase).</p>
       </div>
 
-      <div class="row3">
-        <div><label>Avatar</label><select id="avatar"><option>Avatar 1</option><option>Avatar 2</option><option>Avatar 3</option><option>Avatar 4</option></select></div>
-        <div><label>Stimme</label><select id="voice"><option>Katja (w, DE)</option><option>Conrad (m, DE)</option><option>Ingrid (w, AT)</option><option>Leni (w, CH)</option></select></div>
-        <div><label>Brand-Farbe</label><input type="color" id="brand" value="#00D09C" /></div>
+      <div class="card">
+        <h2>Bibliothek</h2>
+        <div class="toolbar">
+          <label>Status:
+            <select id="statusFilter"><option value="ALL">Alle</option><option value="INIT">Nur INIT</option><option value="POSTED">Nur POSTED</option></select>
+          </label>
+          <label>Suche (Hook/Caption/Tags): <input id="searchInput" placeholder="Suchbegriff" style="width:220px"/></label>
+          <button id="btnReload" class="link">Neu laden</button>
+          <button id="btnExport" class="ghost">Export CSV</button>
+          <label class="ghost" style="padding:9px 12px;border-radius:10px;border:1px solid #273042;cursor:pointer">CSV importieren
+            <input id="csvInput" type="file" accept=".csv" />
+          </label>
+        </div>
+        <table style="margin-top:10px">
+          <thead><tr><th>Datum</th><th>Plattform</th><th>Format</th><th>Avatar</th><th>Caption</th><th>Status</th><th>Aktion</th></tr></thead>
+          <tbody id="rows"><tr><td colspan="7" class="hint">Lade…</td></tr></tbody>
+        </table>
       </div>
-
-      <div><label>Look / Stil-Notiz</label><input id="look" placeholder="Hintergrund, Licht, Kleidung, Stimmung" value="Dunkler Hintergrund, Teal-Akzent, seriös, ruhige Mimik"/></div>
-
-      <div class="row3">
-        <div><label>Wasserzeichen</label><select id="wmOn"><option value="true">Aktiv</option><option value="false">Aus</option></select></div>
-        <div><label>Wasserzeichen-Text</label><input id="wmText" placeholder="@deinusername" value="@deinusername"/></div>
-        <div><label>Musik</label><select id="music"></select></div>
-      </div>
-
-      <div><label>Hook</label><input id="hook" placeholder="Starker Einstiegssatz" value="90 % scheitern – vermeide diese 3 Fallen…"/></div>
-      <div><label>Skript (Voiceover)</label><textarea id="script" rows="5">Kurzer Beispiel-Text fürs Voiceover …</textarea></div>
-      <div><label>Hashtags</label><input id="tags" value="#kibusiness #digitalbusiness #futureofwork #arbeitmitki #onlinebusiness" /></div>
-      <div><label>Caption (Kurz-Titel)</label><input id="caption" placeholder="z. B. 'Mit KI in 7 Tagen starten'" /></div>
-      <div><label>TikTok Videobeschreibung</label><textarea id="ttDesc" rows="3" placeholder="Call-to-Action + Keywords + Hashtags"></textarea></div>
-
-      <div class="row">
-        <div><label>Datum</label><input id="date" type="date" /></div>
-        <div><label>Uhrzeit</label><select id="timeSel"></select></div>
-        <div style="display:flex;align-items:flex-end;justify-content:flex-end"><button id="planBtn" disabled>Planen / Starten</button></div>
-      </div>
-      <p class="hint">Hinweis: Nach dem Speichern erscheint der Eintrag unten in der Bibliothek (aus Supabase).</p>
     </div>
 
-    <div class="card">
-      <h2>Bibliothek</h2>
-      <div class="toolbar">
-        <label>Status-Filter:
-          <select id="statusFilter">
-            <option value="ALL">Alle</option>
-            <option value="INIT">Nur INIT</option>
-            <option value="POSTED">Nur POSTED</option>
-          </select>
-        </label>
-        <button id="btnReload" class="ghost">Neu laden</button>
-        <button id="btnExport" class="ghost">Export CSV</button>
-        <label class="ghost" style="padding:9px 12px;border-radius:10px;border:1px solid #273042;cursor:pointer">CSV importieren
-          <input id="csvInput" type="file" accept=".csv" />
-        </label>
+    <!-- Settings View -->
+    <div id="viewSettings" class="hidden">
+      <div class="card"><h2>Einstellungen · Accounts & API-Keys</h2><p class="hint">Lege hier deine Plattform-Accounts an. Alles wird in Supabase gespeichert (Tabelle <code>accounts</code>).</p></div>
+
+      <div class="card">
+        <h3>Account hinzufügen</h3>
+        <div class="row3">
+          <div><label>Plattform</label>
+            <select id="acc_platform"><option value="tiktok">TikTok</option><option value="instagram">Instagram</option></select>
+          </div>
+          <div><label>Account-Name (Label)</label><input id="acc_label" placeholder="z. B. TikTok @brand_de"/></div>
+          <div><label>User-ID (optional)</label><input id="acc_user" placeholder="z. B. IG User ID"/></div>
+        </div>
+        <div class="row">
+          <div><label>Access Token</label><input id="acc_token" placeholder="Token hier einfügen"/></div>
+          <div style="display:flex;align-items:flex-end;gap:8px"><button id="acc_add">Hinzufügen</button></div>
+        </div>
+        <p class="hint">Hinweis: Token erhältst du über die offiziellen APIs (TikTok Business / Instagram Graph).</p>
       </div>
-      <table style="margin-top:10px">
-        <thead><tr><th>Datum</th><th>Plattform</th><th>Format</th><th>Avatar</th><th>Caption</th><th>Status</th><th>Aktion</th></tr></thead>
-        <tbody id="rows"><tr><td colspan="7" class="hint">Lade…</td></tr></tbody>
-      </table>
+
+      <div class="card">
+        <h3>Gespeicherte Accounts</h3>
+        <table>
+          <thead><tr><th>Plattform</th><th>Label</th><th>User-ID</th><th>Token (gekürzt)</th><th>Aktion</th></tr></thead>
+          <tbody id="acc_rows"><tr><td colspan="5" class="hint">Lade…</td></tr></tbody>
+        </table>
+      </div>
+
+      <div class="card"><button id="btnBack" class="link">← Zurück zum Composer</button></div>
     </div>
   </div>
 
   <script>
     // Presets
-    const MUSIC_PRESETS = ['Corporate Future Bass','Uplifting Motivational','Dreams','Upbeat Technology','Epic Inspire','Pop Dance','Nimbus','Summer Vibes','Tropical House','Island Dream','Dark Future Bass','Ticker','Cinematic Tension','Hybrid Trap','Unstoppable','LoFi Chillhop','Sunday Rain','Soft Corporate','Digital Flow','Clear Sky','Keine Musik','App-Sound (Draft)'];
-    const $ = id => document.getElementById(id);
+    const MUSIC_PRESETS=['Corporate Future Bass','Uplifting Motivational','Dreams','Upbeat Technology','Epic Inspire','Pop Dance','Nimbus','Summer Vibes','Tropical House','Island Dream','Dark Future Bass','Ticker','Cinematic Tension','Hybrid Trap','Unstoppable','LoFi Chillhop','Sunday Rain','Soft Corporate','Digital Flow','Clear Sky','Keine Musik','App-Sound (Draft)'];
+    const $=id=>document.getElementById(id);
 
     // init music
-    const musicSel = $('music'); MUSIC_PRESETS.forEach(m=>{ const o=document.createElement('option'); o.textContent=m; musicSel.appendChild(o); });
+    const musicSel=$('music'); MUSIC_PRESETS.forEach(m=>{ const o=document.createElement('option'); o.textContent=m; musicSel.appendChild(o); });
 
     // init times 08:00–23:00
-    const timeSel = $('timeSel'); for(let h=8; h<=23; h++){ const o=document.createElement('option'); const val=String(h).padStart(2,'0')+':00'; o.value=val; o.textContent=val; timeSel.appendChild(o); }
+    const timeSel=$('timeSel'); for(let h=8; h<=23; h++){ const o=document.createElement('option'); const val=String(h).padStart(2,'0')+':00'; o.value=val; o.textContent=val; timeSel.appendChild(o); }
 
-    // defaults: date=today, time=next slot
+    // defaults date/time
     const dInput=$('date'); const now=new Date(); const yyyy=now.getFullYear(), mm=String(now.getMonth()+1).padStart(2,'0'), dd=String(now.getDate()).padStart(2,'0');
     dInput.value=`${yyyy}-${mm}-${dd}`; let nextHour=now.getHours()+1; if(nextHour<8) nextHour=8; if(nextHour>23){ const t=new Date(now.getTime()+86400000); const y=t.getFullYear(), m=String(t.getMonth()+1).padStart(2,'0'), d=String(t.getDate()).padStart(2,'0'); dInput.value=`${y}-${m}-${d}`; nextHour=8; } timeSel.value=String(nextHour).padStart(2,'0')+':00';
 
-    // form validation
-    const required=['hook','script','date','timeSel']; function check(){ const ok=required.every(id=>$(id).value && String($(id).value).trim()); $('planBtn').disabled=!ok; } required.forEach(id=>$(id).addEventListener('input',check)); check();
+    // validation
+    const required=['hook','script','date','timeSel']; function check(){ const ok=required.every(id=>$(id).value && String($(id).value).trim()); $('planBtn').disabled=!ok; }
+    required.forEach(id=>$(id).addEventListener('input',check)); check();
 
-    // Helpers
+    // helpers
     function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-    function toIsoTz(dateStr,timeStr){ // interpretiert local date+time als lokale Zeit → ISO
-      const [y,m,d]=dateStr.split('-').map(Number); const [hh,mm]=timeStr.split(':').map(Number);
-      const dt=new Date(y, (m-1), d, hh, mm, 0); return dt.toISOString();
-    }
+    function toIsoTz(dateStr,timeStr){ const [y,m,d]=dateStr.split('-').map(Number); const [hh,mi]=timeStr.split(':').map(Number); const dt=new Date(y,(m-1),d,hh,mi,0); return dt.toISOString(); }
     function human(dtIso){ try{ const d=new Date(dtIso); const yyyy=d.getFullYear(); const mm=String(d.getMonth()+1).padStart(2,'0'); const dd=String(d.getDate()).padStart(2,'0'); const hh=String(d.getHours()).padStart(2,'0'); const mi=String(d.getMinutes()).padStart(2,'0'); return `${yyyy}-${mm}-${dd} ${hh}:${mi}`; }catch(_){ return dtIso||''; } }
 
-    // Render table
-    const rowsEl=$('rows');
-    function rowHtml(v){
-      const statusHtml = v.status==='POSTED' ? '<span class="status-ok">✓ POSTED</span>' : (v.status||'INIT');
-      return `<tr class="clickable" data-id="${v.id}">
-        <td>${esc(human(v.scheduled_at))}</td>
-        <td>${esc(v.platform)}</td>
-        <td>${esc(v.format)}</td>
-        <td>${esc(v.avatar)}</td>
-        <td>${esc(v.caption||v.hook||'')}</td>
-        <td>${statusHtml}</td>
-        <td>
-          <button class="secondary" data-action="load" data-id="${v.id}">In Composer</button>
-          <button class="ghost" data-action="toggle" data-id="${v.id}">${v.status==='POSTED'?'Entmarkieren':'Als gepostet'}</button>
-          <button class="ghost" data-action="del" data-id="${v.id}">Löschen</button>
-        </td>
-      </tr>`;
-    }
+    // ===== ROUTER =====
+    const viewMain=$('viewMain'); const viewSettings=$('viewSettings');
+    function renderRoute(){ const hash=location.hash; if(hash==="#/settings"){ viewMain.classList.add('hidden'); viewSettings.classList.remove('hidden'); loadAccounts(); } else { viewSettings.classList.add('hidden'); viewMain.classList.remove('hidden'); loadList(); } }
+    $('btnGoSettings').onclick=()=>{ location.hash='#/settings'; };
+    $('btnGoComposer').onclick=()=>{ location.hash='#/'; };
+    $('btnBack').onclick=()=>{ location.hash='#/'; };
+    window.addEventListener('hashchange', renderRoute);
 
+    // ===== SUPABASE CLIENT =====
+    const sb = window.sb; // already created in <head>
+
+    // ===== VIDEOS (Library) =====
+    const rowsEl=$('rows');
     async function loadList(){
       rowsEl.innerHTML='<tr><td colspan="7" class="hint">Lade…</td></tr>';
-      const filter=$('statusFilter').value;
+      const filter=$('statusFilter').value; const qSearch=($('searchInput').value||'').toLowerCase();
       let q = sb.from('videos').select('*').order('scheduled_at',{ascending:false, nullsFirst:false});
-      if(filter!=='ALL'){ q = q.eq('status', filter); }
+      if(filter!=='ALL') q=q.eq('status', filter);
       const { data, error } = await q;
-      if(error){ rowsEl.innerHTML = `<tr><td colspan="7" class="hint">Fehler beim Laden: ${esc(error.message)}</td></tr>`; return; }
-      if(!data.length){ rowsEl.innerHTML = '<tr><td colspan="7" class="hint">Keine Einträge gefunden.</td></tr>'; return; }
-      rowsEl.innerHTML = data.map(rowHtml).join('');
+      if(error){ rowsEl.innerHTML=`<tr><td colspan="7" class="hint">Fehler: ${esc(error.message)}</td></tr>`; return; }
+      let list=data||[];
+      if(qSearch){ list=list.filter(v=> (v.hook||'').toLowerCase().includes(qSearch) || (v.caption||'').toLowerCase().includes(qSearch) || (v.tags||'').toLowerCase().includes(qSearch)); }
+      if(!list.length){ rowsEl.innerHTML='<tr><td colspan="7" class="hint">Keine Einträge gefunden.</td></tr>'; return; }
+      rowsEl.innerHTML=list.map(v=>{
+        const statusHtml = v.status==='POSTED' ? '<span class="status-ok">✓ POSTED</span>' : (v.status||'INIT');
+        return `<tr class="clickable" data-id="${v.id}">
+          <td>${esc(human(v.scheduled_at))}</td>
+          <td>${esc(v.platform)}</td>
+          <td>${esc(v.format)}</td>
+          <td>${esc(v.avatar)}</td>
+          <td>${esc(v.caption||v.hook||'')}</td>
+          <td>${statusHtml}</td>
+          <td>
+            <button class="link" data-action="load" data-id="${v.id}">In Composer</button>
+            <button class="ghost" data-action="toggle" data-id="${v.id}">${v.status==='POSTED'?'Entmarkieren':'Als gepostet'}</button>
+            <button class="danger" data-action="del" data-id="${v.id}">Löschen</button>
+          </td>
+        </tr>`;
+      }).join('');
     }
 
     $('statusFilter').addEventListener('change', loadList);
     $('btnReload').addEventListener('click', loadList);
+    $('searchInput').addEventListener('input', ()=>{ // live filter client-seitig
+      loadList();
+    });
 
     // Insert (Planen)
     $('planBtn').addEventListener('click', async ()=>{
       const risky=/(\d{2,4}\s?€\s?\/(Tag|Monat))|garantiert|sicher reich|schnell reich|earn|income|rich/i; const txt=$('hook').value+' '+$('script').value; if(risky.test(txt)) alert('Hinweis: Vermeide €-Summen & Garantien – Richtlinien!');
       const date=$('date').value, time=$('timeSel').value;
-      const payload={
-        platform:$('platform').value, format:$('format').value, ttMode:$('ttMode').value,
-        avatar:$('avatar').value, voice:$('voice').value, brand:$('brand').value,
-        look:$('look').value, wmOn: $('wmOn').value==='true', wmText:$('wmText').value,
-        music:$('music').value, hook:$('hook').value, script:$('script').value,
-        tags:$('tags').value, caption:$('caption').value, ttDesc:$('ttDesc').value,
-        scheduled_at: toIsoTz(date, time), status:'INIT', link:''
-      };
-      const { error } = await sb.from('videos').insert(payload);
-      if(error) return alert('Fehler beim Speichern: '+error.message);
-      alert('Geplant! (in Supabase gespeichert)');
-      loadList();
+      const payload={platform:$('platform').value, format:$('format').value, ttMode:$('ttMode').value, avatar:$('avatar').value, voice:$('voice').value, brand:$('brand').value, look:$('look').value, wmOn:$('wmOn').value==='true', wmText:$('wmText').value, music:$('music').value, hook:$('hook').value, script:$('script').value, tags:$('tags').value, caption:$('caption').value, ttDesc:$('ttDesc').value, scheduled_at: toIsoTz(date,time), status:'INIT', link:'' };
+      const { error } = await sb.from('videos').insert(payload); if(error) return alert('Fehler beim Speichern: '+error.message); alert('Geplant!'); loadList();
     });
 
     // Row actions
     rowsEl.addEventListener('click', async (e)=>{
       const b=e.target.closest('button'); if(!b) return; const id=b.dataset.id; const action=b.dataset.action; if(!id) return;
       if(action==='toggle'){
-        // toggle POSTED
-        const row = await fetchOne(id); if(!row) return;
-        const newStatus = row.status==='POSTED' ? 'INIT' : 'POSTED';
-        const { error } = await sb.from('videos').update({status:newStatus}).eq('id', id);
-        if(error) return alert('Fehler: '+error.message); loadList();
+        const { data, error } = await sb.from('videos').select('status').eq('id', id).single(); if(error) return alert('Fehler: '+error.message);
+        const next = (data?.status)==='POSTED' ? 'INIT' : 'POSTED';
+        const res = await sb.from('videos').update({status:next}).eq('id', id); if(res.error) return alert('Fehler: '+res.error.message); loadList();
       } else if(action==='del'){
-        if(!confirm('Eintrag wirklich löschen?')) return;
-        const { error } = await sb.from('videos').delete().eq('id', id);
-        if(error) return alert('Fehler: '+error.message); loadList();
+        if(!confirm('Eintrag löschen?')) return; const { error } = await sb.from('videos').delete().eq('id', id); if(error) return alert('Fehler: '+error.message); loadList();
       } else if(action==='load'){
-        const row = await fetchOne(id); if(!row) return;
-        $('platform').value=row.platform||'tiktok'; $('format').value=row.format||'post'; $('ttMode').value=row.ttMode||'direct';
-        $('avatar').value=row.avatar||'Avatar 1'; $('voice').value=row.voice||'Katja (w, DE)'; $('brand').value=row.brand||'#00D09C';
-        $('look').value=row.look||''; $('wmOn').value=row.wmOn?'true':'false'; $('wmText').value=row.wmText||'@deinusername';
-        $('music').value=row.music||MUSIC_PRESETS[0]; $('hook').value=row.hook||''; $('script').value=row.script||''; $('tags').value=row.tags||'#kibusiness #digitalbusiness #futureofwork #arbeitmitki #onlinebusiness';
-        $('caption').value=row.caption||''; $('ttDesc').value=row.ttDesc||'';
-        if(row.scheduled_at){ const d=new Date(row.scheduled_at); const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), da=String(d.getDate()).padStart(2,'0'); const hh=String(d.getHours()).padStart(2,'0'), mi=String(d.getMinutes()).padStart(2,'0'); $('date').value=`${y}-${m}-${da}`; if([...timeSel.options].some(o=>o.value===`${hh}:${mi}`)) timeSel.value=`${hh}:${mi}`; }
-        window.scrollTo({top:0,behavior:'smooth'}); check();
+        const { data, error } = await sb.from('videos').select('*').eq('id', id).single(); if(error) return alert('Fehler: '+error.message);
+        const v=data; $('platform').value=v.platform||'tiktok'; $('format').value=v.format||'post'; $('ttMode').value=v.ttMode||'direct'; $('avatar').value=v.avatar||'Avatar 1'; $('voice').value=v.voice||'Katja (w, DE)'; $('brand').value=v.brand||'#00D09C'; $('look').value=v.look||''; $('wmOn').value=v.wmOn?'true':'false'; $('wmText').value=v.wmText||'@deinusername'; $('music').value=v.music||MUSIC_PRESETS[0]; $('hook').value=v.hook||''; $('script').value=v.script||''; $('tags').value=v.tags||'#kibusiness #digitalbusiness #futureofwork #arbeitmitki #onlinebusiness'; $('caption').value=v.caption||''; $('ttDesc').value=v.ttDesc||''; if(v.scheduled_at){ const d=new Date(v.scheduled_at); const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), da=String(d.getDate()).padStart(2,'0'); const hh=String(d.getHours()).padStart(2,'0'), mi=String(d.getMinutes()).padStart(2,'0'); $('date').value=`${y}-${m}-${da}`; if([...timeSel.options].some(o=>o.value===`${hh}:${mi}`)) timeSel.value=`${hh}:${mi}`; } window.scrollTo({top:0,behavior:'smooth'}); check();
       }
     });
 
-    async function fetchOne(id){ const { data, error } = await sb.from('videos').select('*').eq('id', id).single(); if(error){ alert('Fehler: '+error.message); return null; } return data; }
-
-    // CSV Export (aus Supabase)
+    // CSV Export
     $('btnExport').addEventListener('click', async ()=>{
-      const { data, error } = await sb.from('videos').select('*').order('scheduled_at', {ascending:false});
-      if(error) return alert('Fehler: '+error.message);
-      const header = ['platform','format','avatar','voice','look','music','hook','script','tags','caption','ttDesc','scheduled_at','status','link'];
-      const rows = (data||[]).map(r=> header.map(h=> (r[h]??'')).map(v=> String(v).replace(/"/g,'""')));
-      const csv = header.join(',')+'\n'+rows.map(r=> r.map(v=>`"${v}"`).join(',')).join('\n');
-      const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='videos_export.csv'; a.click(); URL.revokeObjectURL(url);
+      const { data, error } = await sb.from('videos').select('*').order('scheduled_at',{ascending:false}); if(error) return alert('Fehler: '+error.message);
+      const header=['platform','format','avatar','voice','look','music','hook','script','tags','caption','ttDesc','scheduled_at','status','link'];
+      const rows=(data||[]).map(r=> header.map(h=> (r[h]??''))).map(r=> r.map(v=> String(v).replace(/"/g,'""')));
+      const csv=header.join(',')+'\n'+rows.map(r=> r.map(v=>`"${v}"`).join(',')).join('\n'); const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='videos_export.csv'; a.click(); URL.revokeObjectURL(url);
     });
 
     // CSV Import → Supabase insert
     $('csvInput').addEventListener('change', async (e)=>{
-      const file=e.target.files?.[0]; if(!file) return; const text=await file.text(); const lines=text.split(/\r?\n/).filter(Boolean);
-      if(!lines.length) return alert('CSV ist leer.');
-      const header=lines.shift().split(',').map(h=>h.trim().replace(/^"|"$/g,''));
-      const colIndex=name=> header.findIndex(h=>h.toLowerCase()===name);
-      const needs=['hook','script']; for(const c of needs){ if(colIndex(c)===-1) return alert(`Spalte "${c}" fehlt.`); }
-      const items=[];
-      for(const line of lines){ const cells=parseCsvLine(line); const val=name=>{const i=colIndex(name); return i>-1?(cells[i]||''):''};
-        const scheduled = val('scheduled_at');
-        items.push({
-          platform: val('platform')||'tiktok', format: val('format')||'post', ttMode: 'direct',
-          avatar: val('avatar')||'Avatar 1', voice: val('voice')||'Katja (w, DE)', brand:'#00D09C', look: val('look')||'',
-          wmOn: true, wmText:'@deinusername', music: val('music')||MUSIC_PRESETS[0], hook: val('hook'), script: val('script'),
-          tags: val('tags')||'#kibusiness #digitalbusiness #futureofwork #arbeitmitki #onlinebusiness', caption: val('caption')||'', ttDesc: val('ttDesc')||'',
-          scheduled_at: scheduled || null, status: val('status')||'INIT', link: val('link')||''
-        });
-      }
-      // Batch insert (chunked)
-      const chunkSize=100; for(let i=0;i<items.length;i+=chunkSize){ const chunk=items.slice(i,i+chunkSize); const { error } = await sb.from('videos').insert(chunk); if(error) return alert('Import-Fehler: '+error.message); }
+      const file=e.target.files?.[0]; if(!file) return; const text=await file.text(); const lines=text.split(/\r?\n/).filter(Boolean); if(!lines.length) return alert('CSV ist leer.');
+      const header=lines.shift().split(',').map(h=>h.trim().replace(/^"|"$/g,'')); const idx=name=> header.findIndex(h=>h.toLowerCase()===name);
+      if(idx('hook')===-1 || idx('script')===-1) return alert('Spalten "hook" und "script" sind Pflicht.');
+      const items=[]; for(const line of lines){ const cells=parseCsvLine(line); const get=n=>{ const i=idx(n); return i>-1 ? (cells[i]||'') : ''; }; items.push({ platform:get('platform')||'tiktok', format:get('format')||'post', ttMode:'direct', avatar:get('avatar')||'Avatar 1', voice:get('voice')||'Katja (w, DE)', brand:'#00D09C', look:get('look')||'', wmOn:true, wmText:'@deinusername', music:get('music')||MUSIC_PRESETS[0], hook:get('hook'), script:get('script'), tags:get('tags')||'#kibusiness #digitalbusiness #futureofwork #arbeitmitki #onlinebusiness', caption:get('caption')||'', ttDesc:get('ttDesc')||'', scheduled_at:get('scheduled_at')||null, status:get('status')||'INIT', link:get('link')||'' }); }
+      const chunk=100; for(let i=0;i<items.length;i+=chunk){ const part=items.slice(i,i+chunk); const { error } = await sb.from('videos').insert(part); if(error) return alert('Import-Fehler: '+error.message); }
       alert(`${items.length} Einträge importiert.`); e.target.value=''; loadList();
     });
 
     function parseCsvLine(line){ const out=[]; let cur=''; let inQ=false; for(let i=0;i<line.length;i++){ const ch=line[i]; if(ch==='"'){ if(inQ && line[i+1]==='"'){ cur+='"'; i++; } else inQ=!inQ; } else if(ch===',' && !inQ){ out.push(cur); cur=''; } else { cur+=ch; } } out.push(cur); return out.map(s=>s.trim()); }
 
-    // Start
-    loadList();
+    // ===== ACCOUNTS (Settings) =====
+    const accRows=$('acc_rows');
+    async function loadAccounts(){
+      accRows.innerHTML='<tr><td colspan="5" class="hint">Lade…</td></tr>';
+      const { data, error } = await sb.from('accounts').select('*').order('created_at',{ascending:false});
+      if(error){ accRows.innerHTML=`<tr><td colspan="5" class="hint">Fehler: ${esc(error.message)}<br>Falls die Tabelle fehlt, lege sie mit diesem SQL an:<br><code>create table accounts (id uuid default gen_random_uuid() primary key, platform text, label text, user_id text, access_token text, created_at timestamp with time zone default now());</code></td></tr>`; return; }
+      if(!data.length){ accRows.innerHTML='<tr><td colspan="5" class="hint">Noch keine Accounts gespeichert.</td></tr>'; return; }
+      accRows.innerHTML=data.map(a=>{
+        const shortTok = a.access_token ? esc(a.access_token.slice(0,6)+'…'+a.access_token.slice(-4)) : '';
+        return `<tr><td>${esc(a.platform)}</td><td>${esc(a.label)}</td><td>${esc(a.user_id||'')}</td><td>${shortTok}</td><td><button class="danger" data-aid="${a.id}" data-aact="del">Löschen</button></td></tr>`;
+      }).join('');
+    }
 
-    // Disable ttMode when not TikTok
-    $('platform').addEventListener('change', ()=>{ $('ttMode').disabled = $('platform').value!=='tiktok'; });
+    $('acc_add').addEventListener('click', async ()=>{
+      const payload={ platform:$('acc_platform').value, label:$('acc_label').value, user_id:$('acc_user').value, access_token:$('acc_token').value };
+      if(!payload.label || !payload.access_token) return alert('Bitte Label und Token ausfüllen.');
+      const { error } = await sb.from('accounts').insert(payload); if(error) return alert('Fehler: '+error.message); $('acc_label').value=''; $('acc_user').value=''; $('acc_token').value=''; loadAccounts();
+    });
+
+    $('acc_rows').addEventListener('click', async (e)=>{ const b=e.target.closest('button'); if(!b) return; const id=b.dataset.aid; const act=b.dataset.aact; if(act==='del'){ if(!confirm('Account wirklich löschen?')) return; const { error } = await sb.from('accounts').delete().eq('id', id); if(error) return alert('Fehler: '+error.message); loadAccounts(); }});
+
+    // start
+    renderRoute();
   </script>
 </body>
 </html>
