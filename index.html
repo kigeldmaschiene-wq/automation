@@ -1,0 +1,89 @@
+<!doctype html>
+<tbody id="rows">
+<tr><td colspan="7" class="hint">Noch keine Einträge. Plane oben dein erstes Video.</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+
+<script>
+const MUSIC_PRESETS = [
+'Corporate Future Bass','Uplifting Motivational','Dreams','Upbeat Technology','Epic Inspire',
+'Pop Dance','Nimbus','Summer Vibes','Tropical House','Island Dream',
+'Dark Future Bass','Ticker','Cinematic Tension','Hybrid Trap','Unstoppable',
+'LoFi Chillhop','Sunday Rain','Soft Corporate','Digital Flow','Clear Sky',
+'Keine Musik','App-Sound (Draft)'
+];
+
+
+const $ = (id)=>document.getElementById(id);
+const rowsEl = $('rows');
+
+
+// init music options
+const musicSel = $('music');
+MUSIC_PRESETS.forEach(m=>{ const o=document.createElement('option'); o.textContent=m; musicSel.appendChild(o); });
+
+
+const inputs = ['hook','script','when'];
+function check(){
+const ok = inputs.every(id=>$(id).value.trim());
+$('planBtn').disabled = !ok;
+}
+inputs.forEach(id=>$(id).addEventListener('input', check)); check();
+
+
+function addRow(data){
+// remove placeholder row
+if(rowsEl.children.length===1 && rowsEl.children[0].children[0].colSpan===7){ rowsEl.innerHTML=''; }
+const tr=document.createElement('tr');
+tr.innerHTML = `<td>${data.when}</td><td>${data.platform}</td><td>${data.format}${data.platform==='tiktok'? ' · '+data.ttMode:''}</td><td>${data.avatar}</td><td>${data.hook}</td><td>${data.status}</td><td>${data.link||'-'}</td>`;
+rowsEl.prepend(tr);
+}
+
+
+$('planBtn').addEventListener('click', ()=>{
+const risky = /(\d{2,4}\s?€\s?\/(Tag|Monat))|garantiert|sicher reich|schnell reich|earn|income|rich/i;
+const txt = $('hook').value + ' ' + $('script').value;
+if(risky.test(txt)) alert('Hinweis: Vermeide €-Summen, Garantien, "schnell reich" – könnte gegen Richtlinien verstoßen.');
+
+
+const data = {
+platform: $('platform').value,
+format: $('format').value,
+ttMode: $('ttMode').value,
+avatar: $('avatar').value,
+voice: $('voice').value,
+brand: $('brand').value,
+look: $('look').value,
+wmOn: $('wmOn').value==='true',
+wmText: $('wmText').value,
+music: $('music').value,
+hook: $('hook').value,
+script: $('script').value,
+tags: $('tags').value,
+when: $('when').value,
+status: 'INIT', link:''
+};
+
+
+const all = JSON.parse(localStorage.getItem('jobs')||'[]');
+all.unshift(data); localStorage.setItem('jobs', JSON.stringify(all));
+addRow(data);
+alert('Geplant! (lokal gespeichert)');
+});
+
+
+// load existing
+const saved = JSON.parse(localStorage.getItem('jobs')||'[]');
+if(saved.length){ saved.forEach(addRow); }
+
+
+// sync ttMode disable when not TikTok
+$('platform').addEventListener('change', ()=>{
+$('ttMode').disabled = $('platform').value!=='tiktok';
+});
+</script>
+</body>
+</html>
