@@ -3,21 +3,19 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>TikTok & Instagram Automation (Single-File)</title>
+  <title>TikTok & Instagram Automation (Supabase)</title>
   <style>
     :root{--bg:#0b0c10;--card:#111318;--muted:#9aa4b2;--border:#1f2430;--brand:#00D09C;--ok:#22c55e}
     *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial;background:var(--bg);color:#e5e7eb}
-    .wrap{max-width:980px;margin:18px auto;padding:12px}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px}
-    h1{font-size:20px;margin:0 0 8px} h2{font-size:16px;margin:8px 0}
-    label{display:block;font-size:12px;color:var(--muted);margin-top:8px}
-    input,select,textarea,button{font-family:inherit}
-    input,select,textarea{width:100%;padding:9px;margin-top:6px;background:#0f1116;border:1px solid #2a3140;border-radius:10px;color:#e5e7eb}
-    button{background:var(--brand);color:#0b0c10;border:0;padding:9px 12px;border-radius:10px;cursor:pointer;font-weight:600}
-    button.secondary{background:#263042;color:#e5e7eb}
-    button.ghost{background:transparent;border:1px solid #273042;color:var(--muted)}
-    .row{display:grid;grid-template-columns:1fr 1fr; gap:10px}
-    .row3{display:grid;grid-template-columns:1fr 1fr 1fr; gap:10px}
+    .wrap{max-width:980px;margin:24px auto;padding:16px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:16px}
+    h1{font-size:22px;margin:0 0 12px} h2{font-size:18px;margin:8px 0}
+    label{display:block;font-size:12px;color:var(--muted);margin-top:10px}
+    input,select,textarea{width:100%;padding:10px;margin-top:6px;background:#0f1116;border:1px solid #2a3140;border-radius:10px;color:#e5e7eb}
+    button{background:var(--brand);color:#0b0c10;border:0;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:600}
+    button:disabled{opacity:.5;cursor:not-allowed}
+    .row{display:grid;grid-template-columns:1fr 1fr; gap:12px}
+    .row3{display:grid;grid-template-columns:1fr 1fr 1fr; gap:12px}
     .hint{font-size:12px;color:var(--muted)}
     table{width:100%;border-collapse:collapse;font-size:13px}
     th,td{padding:8px;border-bottom:1px solid var(--border);text-align:left}
@@ -25,14 +23,24 @@
     tr.clickable:hover{background:#0f141a}
     .badge{display:inline-block;background:#151a22;border:1px solid #273042;padding:3px 8px;border-radius:999px;margin-right:6px;font-size:11px}
     .status-ok{color:var(--ok);font-weight:700}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    .toolbar input[type=file]{display:none}
     @media (max-width:640px){ .row3{grid-template-columns:1fr} .row{grid-template-columns:1fr} }
   </style>
+  <!-- Supabase JS v2 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // ✏️ HIER ERSETZEN: Deine Supabase Zugangsdaten
+    const SUPABASE_URL = "https://smyhgonljfjzsdaapdcr.supabase.co"; // <— ersetzen
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNteWhnb25samZqenNkYWFwZGNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0MDA5OTgsImV4cCI6MjA3Mzk3Njk5OH0.LH-d7SM4Bij9bsYjz5tJn5B48MNM6tlqp5L2JtKSzT4";                    // <— ersetzen
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  </script>
 </head>
 <body>
   <div class="wrap">
     <div class="card">
-      <h1>TikTok & Instagram Automation</h1>
-      <div class="hint">Einfaches Web-UI. Brand-Farbe: <span class="badge">#00D09C</span> — Einträge lokal gespeichert.</div>
+      <h1>TikTok & Instagram Automation (mit Supabase)</h1>
+      <div class="hint">Daten werden zentral in Supabase gespeichert. Brand-Farbe: <span class="badge">#00D09C</span></div>
     </div>
 
     <div class="card" id="composerCard">
@@ -69,6 +77,184 @@
       <div><label>Hook</label><input id="hook" placeholder="Starker Einstiegssatz" value="90 % scheitern – vermeide diese 3 Fallen…"/></div>
       <div><label>Skript (Voiceover)</label><textarea id="script" rows="5">Kurzer Beispiel-Text fürs Voiceover …</textarea></div>
       <div><label>Hashtags</label><input id="tags" value="#kibusiness #digitalbusiness #futureofwork #arbeitmitki #onlinebusiness" /></div>
+      <div><label>Caption (Kurz-Titel)</label><input id="caption" placeholder="z. B. 'Mit KI in 7 Tagen starten'" /></div>
+      <div><label>TikTok Videobeschreibung</label><textarea id="ttDesc" rows="3" placeholder="Call-to-Action + Keywords + Hashtags"></textarea></div>
 
-      <div><label>Caption (Kurz-Titel, plattformneutral)</label><input id="caption" placeholder="z. B. 'Mit KI in 7 Tagen starten'"/></div>
-      <div><
+      <div class="row">
+        <div><label>Datum</label><input id="date" type="date" /></div>
+        <div><label>Uhrzeit</label><select id="timeSel"></select></div>
+        <div style="display:flex;align-items:flex-end;justify-content:flex-end"><button id="planBtn" disabled>Planen / Starten</button></div>
+      </div>
+      <p class="hint">Hinweis: Nach dem Speichern erscheint der Eintrag unten in der Bibliothek (aus Supabase).</p>
+    </div>
+
+    <div class="card">
+      <h2>Bibliothek</h2>
+      <div class="toolbar">
+        <label>Status-Filter:
+          <select id="statusFilter">
+            <option value="ALL">Alle</option>
+            <option value="INIT">Nur INIT</option>
+            <option value="POSTED">Nur POSTED</option>
+          </select>
+        </label>
+        <button id="btnReload" class="ghost">Neu laden</button>
+        <button id="btnExport" class="ghost">Export CSV</button>
+        <label class="ghost" style="padding:9px 12px;border-radius:10px;border:1px solid #273042;cursor:pointer">CSV importieren
+          <input id="csvInput" type="file" accept=".csv" />
+        </label>
+      </div>
+      <table style="margin-top:10px">
+        <thead><tr><th>Datum</th><th>Plattform</th><th>Format</th><th>Avatar</th><th>Caption</th><th>Status</th><th>Aktion</th></tr></thead>
+        <tbody id="rows"><tr><td colspan="7" class="hint">Lade…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    // Presets
+    const MUSIC_PRESETS = ['Corporate Future Bass','Uplifting Motivational','Dreams','Upbeat Technology','Epic Inspire','Pop Dance','Nimbus','Summer Vibes','Tropical House','Island Dream','Dark Future Bass','Ticker','Cinematic Tension','Hybrid Trap','Unstoppable','LoFi Chillhop','Sunday Rain','Soft Corporate','Digital Flow','Clear Sky','Keine Musik','App-Sound (Draft)'];
+    const $ = id => document.getElementById(id);
+
+    // init music
+    const musicSel = $('music'); MUSIC_PRESETS.forEach(m=>{ const o=document.createElement('option'); o.textContent=m; musicSel.appendChild(o); });
+
+    // init times 08:00–23:00
+    const timeSel = $('timeSel'); for(let h=8; h<=23; h++){ const o=document.createElement('option'); const val=String(h).padStart(2,'0')+':00'; o.value=val; o.textContent=val; timeSel.appendChild(o); }
+
+    // defaults: date=today, time=next slot
+    const dInput=$('date'); const now=new Date(); const yyyy=now.getFullYear(), mm=String(now.getMonth()+1).padStart(2,'0'), dd=String(now.getDate()).padStart(2,'0');
+    dInput.value=`${yyyy}-${mm}-${dd}`; let nextHour=now.getHours()+1; if(nextHour<8) nextHour=8; if(nextHour>23){ const t=new Date(now.getTime()+86400000); const y=t.getFullYear(), m=String(t.getMonth()+1).padStart(2,'0'), d=String(t.getDate()).padStart(2,'0'); dInput.value=`${y}-${m}-${d}`; nextHour=8; } timeSel.value=String(nextHour).padStart(2,'0')+':00';
+
+    // form validation
+    const required=['hook','script','date','timeSel']; function check(){ const ok=required.every(id=>$(id).value && String($(id).value).trim()); $('planBtn').disabled=!ok; } required.forEach(id=>$(id).addEventListener('input',check)); check();
+
+    // Helpers
+    function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function toIsoTz(dateStr,timeStr){ // interpretiert local date+time als lokale Zeit → ISO
+      const [y,m,d]=dateStr.split('-').map(Number); const [hh,mm]=timeStr.split(':').map(Number);
+      const dt=new Date(y, (m-1), d, hh, mm, 0); return dt.toISOString();
+    }
+    function human(dtIso){ try{ const d=new Date(dtIso); const yyyy=d.getFullYear(); const mm=String(d.getMonth()+1).padStart(2,'0'); const dd=String(d.getDate()).padStart(2,'0'); const hh=String(d.getHours()).padStart(2,'0'); const mi=String(d.getMinutes()).padStart(2,'0'); return `${yyyy}-${mm}-${dd} ${hh}:${mi}`; }catch(_){ return dtIso||''; } }
+
+    // Render table
+    const rowsEl=$('rows');
+    function rowHtml(v){
+      const statusHtml = v.status==='POSTED' ? '<span class="status-ok">✓ POSTED</span>' : (v.status||'INIT');
+      return `<tr class="clickable" data-id="${v.id}">
+        <td>${esc(human(v.scheduled_at))}</td>
+        <td>${esc(v.platform)}</td>
+        <td>${esc(v.format)}</td>
+        <td>${esc(v.avatar)}</td>
+        <td>${esc(v.caption||v.hook||'')}</td>
+        <td>${statusHtml}</td>
+        <td>
+          <button class="secondary" data-action="load" data-id="${v.id}">In Composer</button>
+          <button class="ghost" data-action="toggle" data-id="${v.id}">${v.status==='POSTED'?'Entmarkieren':'Als gepostet'}</button>
+          <button class="ghost" data-action="del" data-id="${v.id}">Löschen</button>
+        </td>
+      </tr>`;
+    }
+
+    async function loadList(){
+      rowsEl.innerHTML='<tr><td colspan="7" class="hint">Lade…</td></tr>';
+      const filter=$('statusFilter').value;
+      let q = sb.from('videos').select('*').order('scheduled_at',{ascending:false, nullsFirst:false});
+      if(filter!=='ALL'){ q = q.eq('status', filter); }
+      const { data, error } = await q;
+      if(error){ rowsEl.innerHTML = `<tr><td colspan="7" class="hint">Fehler beim Laden: ${esc(error.message)}</td></tr>`; return; }
+      if(!data.length){ rowsEl.innerHTML = '<tr><td colspan="7" class="hint">Keine Einträge gefunden.</td></tr>'; return; }
+      rowsEl.innerHTML = data.map(rowHtml).join('');
+    }
+
+    $('statusFilter').addEventListener('change', loadList);
+    $('btnReload').addEventListener('click', loadList);
+
+    // Insert (Planen)
+    $('planBtn').addEventListener('click', async ()=>{
+      const risky=/(\d{2,4}\s?€\s?\/(Tag|Monat))|garantiert|sicher reich|schnell reich|earn|income|rich/i; const txt=$('hook').value+' '+$('script').value; if(risky.test(txt)) alert('Hinweis: Vermeide €-Summen & Garantien – Richtlinien!');
+      const date=$('date').value, time=$('timeSel').value;
+      const payload={
+        platform:$('platform').value, format:$('format').value, ttMode:$('ttMode').value,
+        avatar:$('avatar').value, voice:$('voice').value, brand:$('brand').value,
+        look:$('look').value, wmOn: $('wmOn').value==='true', wmText:$('wmText').value,
+        music:$('music').value, hook:$('hook').value, script:$('script').value,
+        tags:$('tags').value, caption:$('caption').value, ttDesc:$('ttDesc').value,
+        scheduled_at: toIsoTz(date, time), status:'INIT', link:''
+      };
+      const { error } = await sb.from('videos').insert(payload);
+      if(error) return alert('Fehler beim Speichern: '+error.message);
+      alert('Geplant! (in Supabase gespeichert)');
+      loadList();
+    });
+
+    // Row actions
+    rowsEl.addEventListener('click', async (e)=>{
+      const b=e.target.closest('button'); if(!b) return; const id=b.dataset.id; const action=b.dataset.action; if(!id) return;
+      if(action==='toggle'){
+        // toggle POSTED
+        const row = await fetchOne(id); if(!row) return;
+        const newStatus = row.status==='POSTED' ? 'INIT' : 'POSTED';
+        const { error } = await sb.from('videos').update({status:newStatus}).eq('id', id);
+        if(error) return alert('Fehler: '+error.message); loadList();
+      } else if(action==='del'){
+        if(!confirm('Eintrag wirklich löschen?')) return;
+        const { error } = await sb.from('videos').delete().eq('id', id);
+        if(error) return alert('Fehler: '+error.message); loadList();
+      } else if(action==='load'){
+        const row = await fetchOne(id); if(!row) return;
+        $('platform').value=row.platform||'tiktok'; $('format').value=row.format||'post'; $('ttMode').value=row.ttMode||'direct';
+        $('avatar').value=row.avatar||'Avatar 1'; $('voice').value=row.voice||'Katja (w, DE)'; $('brand').value=row.brand||'#00D09C';
+        $('look').value=row.look||''; $('wmOn').value=row.wmOn?'true':'false'; $('wmText').value=row.wmText||'@deinusername';
+        $('music').value=row.music||MUSIC_PRESETS[0]; $('hook').value=row.hook||''; $('script').value=row.script||''; $('tags').value=row.tags||'#kibusiness #digitalbusiness #futureofwork #arbeitmitki #onlinebusiness';
+        $('caption').value=row.caption||''; $('ttDesc').value=row.ttDesc||'';
+        if(row.scheduled_at){ const d=new Date(row.scheduled_at); const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), da=String(d.getDate()).padStart(2,'0'); const hh=String(d.getHours()).padStart(2,'0'), mi=String(d.getMinutes()).padStart(2,'0'); $('date').value=`${y}-${m}-${da}`; if([...timeSel.options].some(o=>o.value===`${hh}:${mi}`)) timeSel.value=`${hh}:${mi}`; }
+        window.scrollTo({top:0,behavior:'smooth'}); check();
+      }
+    });
+
+    async function fetchOne(id){ const { data, error } = await sb.from('videos').select('*').eq('id', id).single(); if(error){ alert('Fehler: '+error.message); return null; } return data; }
+
+    // CSV Export (aus Supabase)
+    $('btnExport').addEventListener('click', async ()=>{
+      const { data, error } = await sb.from('videos').select('*').order('scheduled_at', {ascending:false});
+      if(error) return alert('Fehler: '+error.message);
+      const header = ['platform','format','avatar','voice','look','music','hook','script','tags','caption','ttDesc','scheduled_at','status','link'];
+      const rows = (data||[]).map(r=> header.map(h=> (r[h]??'')).map(v=> String(v).replace(/"/g,'""')));
+      const csv = header.join(',')+'\n'+rows.map(r=> r.map(v=>`"${v}"`).join(',')).join('\n');
+      const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='videos_export.csv'; a.click(); URL.revokeObjectURL(url);
+    });
+
+    // CSV Import → Supabase insert
+    $('csvInput').addEventListener('change', async (e)=>{
+      const file=e.target.files?.[0]; if(!file) return; const text=await file.text(); const lines=text.split(/\r?\n/).filter(Boolean);
+      if(!lines.length) return alert('CSV ist leer.');
+      const header=lines.shift().split(',').map(h=>h.trim().replace(/^"|"$/g,''));
+      const colIndex=name=> header.findIndex(h=>h.toLowerCase()===name);
+      const needs=['hook','script']; for(const c of needs){ if(colIndex(c)===-1) return alert(`Spalte "${c}" fehlt.`); }
+      const items=[];
+      for(const line of lines){ const cells=parseCsvLine(line); const val=name=>{const i=colIndex(name); return i>-1?(cells[i]||''):''};
+        const scheduled = val('scheduled_at');
+        items.push({
+          platform: val('platform')||'tiktok', format: val('format')||'post', ttMode: 'direct',
+          avatar: val('avatar')||'Avatar 1', voice: val('voice')||'Katja (w, DE)', brand:'#00D09C', look: val('look')||'',
+          wmOn: true, wmText:'@deinusername', music: val('music')||MUSIC_PRESETS[0], hook: val('hook'), script: val('script'),
+          tags: val('tags')||'#kibusiness #digitalbusiness #futureofwork #arbeitmitki #onlinebusiness', caption: val('caption')||'', ttDesc: val('ttDesc')||'',
+          scheduled_at: scheduled || null, status: val('status')||'INIT', link: val('link')||''
+        });
+      }
+      // Batch insert (chunked)
+      const chunkSize=100; for(let i=0;i<items.length;i+=chunkSize){ const chunk=items.slice(i,i+chunkSize); const { error } = await sb.from('videos').insert(chunk); if(error) return alert('Import-Fehler: '+error.message); }
+      alert(`${items.length} Einträge importiert.`); e.target.value=''; loadList();
+    });
+
+    function parseCsvLine(line){ const out=[]; let cur=''; let inQ=false; for(let i=0;i<line.length;i++){ const ch=line[i]; if(ch==='"'){ if(inQ && line[i+1]==='"'){ cur+='"'; i++; } else inQ=!inQ; } else if(ch===',' && !inQ){ out.push(cur); cur=''; } else { cur+=ch; } } out.push(cur); return out.map(s=>s.trim()); }
+
+    // Start
+    loadList();
+
+    // Disable ttMode when not TikTok
+    $('platform').addEventListener('change', ()=>{ $('ttMode').disabled = $('platform').value!=='tiktok'; });
+  </script>
+</body>
+</html>
