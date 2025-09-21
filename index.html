@@ -194,76 +194,59 @@
   </div>
 
   <script>
-    // ===== UTIL =====
-    const $=id=>document.getElementById(id);
-    const esc=s=> (s||'').toString().replace(/[&<>]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[m]));
-    function toIso(date, time){ return new Date(`${date}T${time}:00`).toISOString(); }
+  // ===== UTIL =====
+  const $=id=>document.getElementById(id);
+  const esc=s=> (s||'').toString().replace(/[&<>]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[m]));
+  const toIso=(d,t)=> new Date(`${d}T${t}:00`).toISOString();
 
-    // ===== NAV =====
-    const viewMain=$('viewMain'); const viewSettings=$('viewSettings');
-    $('btnGoSettings').onclick=()=>{ viewMain.classList.add('hidden'); viewSettings.classList.remove('hidden'); loadAccounts(); loadIntegrations(); };
-    $('btnGoComposer').onclick=$('btnBack').onclick=()=>{ viewSettings.classList.add('hidden'); viewMain.classList.remove('hidden'); loadAccountsToComposer(); loadVideos(); };
+  // ===== NAV =====
+  const viewMain=$('viewMain'), viewSettings=$('viewSettings');
+  $('btnGoSettings').onclick=()=>{ viewMain.classList.add('hidden'); viewSettings.classList.remove('hidden'); loadAccounts(); loadIntegrations(); };
+  $('btnGoComposer').onclick=$('btnBack').onclick=()=>{ viewSettings.classList.add('hidden'); viewMain.classList.remove('hidden'); loadAccountsToComposer(); loadVideos(); };
 
-    // ===== TIME OPTIONS 08–23 =====
-    const timeSel=$('timeSel'); for(let h=8; h<=23; h++){ const v=String(h).padStart(2,'0')+':00'; const o=document.createElement('option'); o.value=v; o.textContent=v; timeSel.appendChild(o);} 
-    const today=new Date(); const y=today.getFullYear(), m=String(today.getMonth()+1).padStart(2,'0'), d=String(today.getDate()).padStart(2,'0'); $('date').value=`${y}-${m}-${d}`; const nh = Math.min(23, Math.max(8, today.getHours()+1)); timeSel.value=String(nh).padStart(2,'0')+':00';
+  // ===== TIME OPTIONS 08–23 =====
+  const timeSel=$('timeSel'); for(let h=8; h<=23; h++){ const v=String(h).padStart(2,'0')+':00'; const o=document.createElement('option'); o.value=v; o.textContent=v; timeSel.appendChild(o); }
+  (function setDefaultDate(){ const n=new Date(); const y=n.getFullYear(), m=String(n.getMonth()+1).padStart(2,'0'), d=String(n.getDate()).padStart(2,'0'); $('date').value=`${y}-${m}-${d}`; const nh=Math.min(23,Math.max(8,n.getHours()+1)); timeSel.value=String(nh).padStart(2,'0')+':00'; })();
 
-    // ===== API WRAPPER (spricht /api/db auf Vercel) =====
-    async function api(action, table, payload={}){
-      const res = await fetch('/api/db', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({action, table, ...payload})});
-      if(!res.ok) throw new Error('API '+res.status); return res.json();
+  // ===== API WRAPPER =====
+  async function api(action, table, payload={}){
+    try{
+      const res = await fetch('/api/db', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action, table, ...payload }) });
+      const txt = await res.text();
+      let json; try{ json = JSON.parse(txt); }catch{ json = { error:`Invalid JSON (${res.status})`, raw:txt }; }
+      if(!res.ok) throw new Error(json?.error || txt || `HTTP ${res.status}`);
+      return json;
+    }catch(e){
+      alert('API-Fehler: '+ (e.message||e)); throw e;
     }
+  }
 
-    // ===== ACCOUNTS =====
-    async function loadAccounts(){ const r=await api('select','accounts',{order:{column:'created_at',dir:'desc'}}); const rows=$('acc_rows'); if(r.error){ rows.innerHTML=`<tr><td colspan="5" class="hint">${esc(r.error)}</td></tr>`; return; } const data=r.data||[]; if(!data.length){ rows.innerHTML='<tr><td colspan="5" class="hint">Keine Accounts</td></tr>'; } else { rows.innerHTML=data.map(a=>`<tr><td>${esc(a.platform)}</td><td>${esc(a.label)}</td><td>${esc(a.user_id||'')}</td><td>${esc((a.access_token||'').slice(0,6))}…</td><td><button class="danger" data-aid="${a.id}" data-action="delAcc">Löschen</button></td></tr>`).join(''); }
-      document.querySelectorAll('[data-action="delAcc"]').forEach(b=> b.onclick=async()=>{ if(!confirm('Account löschen?')) return; await api('delete','accounts',{where:{id:b.dataset.aid}}); loadAccounts(); });
-    }
-    async function loadAccountsToComposer(){ const r=await api('select','accounts'); const sel=$('account'); sel.innerHTML=''; const plat=$('platform').value; const list=(r.data||[]).filter(a=>a.platform===plat); if(!list.length){ sel.innerHTML='<option value="">— kein Account —</option>'; } else { sel.innerHTML=list.map(a=>`<option value="${a.id}">${esc(a.label)}</option>`).join(''); }
-    }
-    $('platform').addEventListener('change', loadAccountsToComposer);
-    $('acc_add').onclick=async()=>{ const payload={ platform:$('acc_platform').value, label:$('acc_label').value, user_id:$('acc_user').value, access_token:$('acc_token').value }; if(!payload.label) return alert('Label fehlt'); await api('insert','accounts',{values:payload}); $('acc_label').value=''; $('acc_user').value=''; $('acc_token').value=''; loadAccounts(); loadAccountsToComposer(); };
+  // ===== ACCOUNTS =====
+  async function loadAccounts(){ const r=await api('select','accounts',{order:{column:'created_at',dir:'desc'}}); const rows=$('acc_rows'); const data=r.data||[]; rows.innerHTML = data.length ? data.map(a=>`<tr><td>${esc(a.platform)}</td><td>${esc(a.label)}</td><td>${esc(a.user_id||'')}</td><td>${esc((a.access_token||'').slice(0,6))}…</td><td><button class="danger" data-aid="${a.id}" data-action="delAcc">Löschen</button></td></tr>`).join('') : '<tr><td colspan="5" class="hint">Keine Accounts</td></tr>';
+  document.querySelectorAll('[data-action="delAcc"]').forEach(b=> b.onclick=async()=>{ if(!confirm('Account löschen?')) return; await api('delete','accounts',{where:{id:b.dataset.aid}}); loadAccounts(); }); }
+  async function loadAccountsToComposer(){ const r=await api('select','accounts'); const sel=$('account'); const plat=$('platform').value; const list=(r.data||[]).filter(a=>a.platform===plat); sel.innerHTML = list.length ? list.map(a=>`<option value="${a.id}">${esc(a.label)}</option>`).join('') : '<option value="">— kein Account —</option>'; }
+  $('platform').addEventListener('change', loadAccountsToComposer);
+  $('acc_add').onclick=async()=>{ const payload={ platform:$('acc_platform').value, label:$('acc_label').value, user_id:$('acc_user').value, access_token:$('acc_token').value }; if(!payload.label) return alert('Label fehlt'); await api('insert','accounts',{values:payload}); $('acc_label').value=''; $('acc_user').value=''; $('acc_token').value=''; loadAccounts(); loadAccountsToComposer(); };
 
-    // ===== INTEGRATIONS =====
-    async function loadIntegrations(){ const r=await api('select','integrations',{order:{column:'created_at',dir:'desc'}}); const body=$('int_rows'); if(r.error){ body.innerHTML=`<tr><td colspan="7" class="hint">${esc(r.error)}</td></tr>`; return; } const list=r.data||[]; if(!list.length){ body.innerHTML='<tr><td colspan="7" class="hint">Keine Integrationen</td></tr>'; return; } body.innerHTML=list.map(x=>`<tr><td>${esc(x.service)}</td><td>${esc(x.label)}</td><td>${esc(x.presenter_id||'')}</td><td>${esc(x.voice_id||'')}</td><td>${esc(x.template_id||'')}</td><td>${esc(x.base_url||'')}</td><td><button class="danger" data-iid="${x.id}" data-action="delInt">Löschen</button></td></tr>`).join('');
-      document.querySelectorAll('[data-action="delInt"]').forEach(b=> b.onclick=async()=>{ if(!confirm('Integration löschen?')) return; await api('delete','integrations',{where:{id:b.dataset.iid}}); loadIntegrations(); });
-    }
-    $('int_add').onclick=async()=>{ const payload={ service:$('int_service').value, label:$('int_label').value, api_key:$('int_key').value, base_url:$('int_base').value, presenter_id:$('int_presenter').value, voice_id:$('int_voice').value, template_id:$('int_template').value, notes:$('int_notes').value }; if(!payload.label||!payload.api_key) return alert('Label + API‑Key nötig'); await api('insert','integrations',{values:payload}); $('int_label').value=''; $('int_key').value=''; $('int_presenter').value=''; $('int_voice').value=''; $('int_template').value=''; $('int_notes').value=''; loadIntegrations(); };
+  // ===== INTEGRATIONS =====
+  async function loadIntegrations(){ const r=await api('select','integrations',{order:{column:'created_at',dir:'desc'}}); const body=$('int_rows'); const list=r.data||[]; body.innerHTML = list.length ? list.map(x=>`<tr><td>${esc(x.service)}</td><td>${esc(x.label)}</td><td>${esc(x.presenter_id||'')}</td><td>${esc(x.voice_id||'')}</td><td>${esc(x.template_id||'')}</td><td>${esc(x.base_url||'')}</td><td><button class="danger" data-iid="${x.id}" data-action="delInt">Löschen</button></td></tr>`).join('') : '<tr><td colspan="7" class="hint">Keine Integrationen</td></tr>';
+  document.querySelectorAll('[data-action="delInt"]').forEach(b=> b.onclick=async()=>{ if(!confirm('Integration löschen?')) return; await api('delete','integrations',{where:{id:b.dataset.iid}}); loadIntegrations(); }); }
+  $('int_add').onclick=async()=>{ const payload={ service:$('int_service').value, label:$('int_label').value, api_key:$('int_key').value, base_url:$('int_base').value, presenter_id:$('int_presenter').value, voice_id:$('int_voice').value, template_id:$('int_template').value, notes:$('int_notes').value }; if(!payload.label||!payload.api_key) return alert('Label + API-Key nötig'); await api('insert','integrations',{values:payload}); $('int_label').value=''; $('int_key').value=''; $('int_presenter').value=''; $('int_voice').value=''; $('int_template').value=''; $('int_notes').value=''; loadIntegrations(); };
 
-    // ===== VIDEOS =====
-    const REQUIRED=['hook','script','date'];
-    function validate(){ const ok=REQUIRED.every(id=> (document.getElementById(id).value||'').trim()); $('planBtn').disabled=!ok; }
-    REQUIRED.forEach(id=> $(id).addEventListener('input', validate)); validate();
+  // ===== VIDEOS =====
+  const REQUIRED=['hook','script','date']; const validate=()=>{ $('planBtn').disabled=!REQUIRED.every(id=> (document.getElementById(id).value||'').trim()); }; REQUIRED.forEach(id=> $(id).addEventListener('input', validate)); validate();
+  $('planBtn').onclick=async()=>{ const p={ platform:$('platform').value, account_id:$('account').value||null, format:$('format').value, ttMode:$('ttMode').value, avatar:$('avatar').value, voice:$('voice').value, brand:$('brand').value, look:$('look').value, wmOn:$('wmOn').value==='true', wmText:$('wmText').value, music:$('music').value, hook:$('hook').value, script:$('script').value, tags:$('tags').value, caption:$('caption').value, ttDesc:$('ttDesc').value, render_service:$('renderEngine').value, render_mode:$('postMode').value, captions_on:$('captionsOn').value==='true', hook_overlay_on:$('hookOverlayOn').value==='true', hook_pos:$('hookStyle').value, scheduled_at: toIso($('date').value, $('timeSel').value), status:'INIT', file_url:null, link:'' }; const r=await api('insert','videos',{values:p}); if(r.error){ alert('Fehler: '+r.error); return } alert('Gespeichert'); loadVideos(); };
+  async function loadVideos(){ const body=$('libRows'); const r=await api('select','videos',{order:{column:'created_at',dir:'desc'}}); const list=r.data||[]; body.innerHTML = list.length ? list.map(v=>`<tr><td>${esc(new Date(v.scheduled_at||Date.now()).toLocaleString())}</td><td>${esc(v.platform)}</td><td>${esc(v.hook||'')}</td><td>${esc(v.status||'INIT')}</td><td>${v.file_url?`<a href=\"${esc(v.file_url)}\" target=\"_blank\">Download</a>`:'—'}</td><td><button class="ghost" data-id="${v.id}" data-act="start">Start jetzt</button> <button class="ghost" data-id="${v.id}" data-act="posted">Als gepostet</button> <button class="danger" data-id="${v.id}" data-act="del">Löschen</button></td></tr>`).join('') : '<tr><td colspan="6" class="hint">Keine Einträge</td></tr>';
+    body.querySelectorAll('button').forEach(b=> b.onclick=onRowAction);
+  }
+  async function onRowAction(e){ const id=e.target.dataset.id, act=e.target.dataset.act; if(act==='start'){ await api('update','videos',{values:{status:'QUEUED'}, where:{id}}); alert('Job in Queue'); loadVideos(); } else if(act==='posted'){ await api('update','videos',{values:{status:'POSTED'}, where:{id}}); loadVideos(); } else if(act==='del'){ if(!confirm('Eintrag löschen?')) return; await api('delete','videos',{where:{id}}); loadVideos(); } }
 
-    $('planBtn').onclick=async()=>{
-      const payload={ platform:$('platform').value, account_id:$('account').value||null, format:$('format').value, ttMode:$('ttMode').value, avatar:$('avatar').value, voice:$('voice').value, brand:$('brand').value, look:$('look').value, wmOn:$('wmOn').value==='true', wmText:$('wmText').value, music:$('music').value, hook:$('hook').value, script:$('script').value, tags:$('tags').value, caption:$('caption').value, ttDesc:$('ttDesc').value, render_service:$('renderEngine').value, render_mode:$('postMode').value, captions_on:$('captionsOn').value==='true', hook_overlay_on:$('hookOverlayOn').value==='true', hook_pos:$('hookStyle').value, scheduled_at: toIso($('date').value, $('timeSel').value), status:'INIT', file_url:null, link:'' };
-      const r=await api('insert','videos',{values:payload}); if(r.error){ alert('Fehler: '+r.error); return; } alert('Gespeichert'); loadVideos();
-    };
+  // ===== MUSIC PRESETS =====
+  ['Corporate Future Bass','Uplifting Motivational','Dreams','Upbeat Technology','Epic Inspire','Pop Dance','LoFi Chillhop','Summer Vibes','Keine Musik','App-Sound (Draft)'].forEach(m=>{ const o=document.createElement('option'); o.textContent=m; $('music').appendChild(o); });
 
-    async function loadVideos(){ const body=$('libRows'); body.innerHTML='<tr><td colspan="6" class="hint">Lade…</td></tr>'; const r=await api('select','videos',{order:{column:'scheduled_at',dir:'desc'}}); if(r.error){ body.innerHTML=`<tr><td colspan="6" class="hint">${esc(r.error)}</td></tr>`; return; } let list=r.data||[]; const f=$('statusFilter').value; if(f!=='ALLE') list=list.filter(v=> (v.status||'INIT')===f); if(!list.length){ body.innerHTML='<tr><td colspan="6" class="hint">Keine Einträge</td></tr>'; return; }
-      body.innerHTML=list.map(v=>`<tr>
-        <td>${esc(new Date(v.scheduled_at||Date.now()).toLocaleString())}</td>
-        <td>${esc(v.platform)}</td>
-        <td>${esc(v.hook||'')}</td>
-        <td>${esc(v.status||'INIT')}</td>
-        <td>${v.file_url?`<a href="${esc(v.file_url)}" target="_blank">Download</a>`:'—'}</td>
-        <td>
-          <button class="ghost" data-id="${v.id}" data-act="start">Start jetzt</button>
-          <button class="ghost" data-id="${v.id}" data-act="posted">Als gepostet</button>
-          <button class="danger" data-id="${v.id}" data-act="del">Löschen</button>
-        </td>
-      </tr>`).join('');
-      body.querySelectorAll('button').forEach(b=> b.onclick=onRowAction);
-    }
-    $('btnReload').onclick=loadVideos; $('statusFilter').onchange=loadVideos;
+  // Start
+  loadAccountsToComposer(); loadVideos();
+</script>
 
-    async function onRowAction(e){ const id=e.target.dataset.id; const act=e.target.dataset.act; if(act==='start'){ await api('update','videos',{values:{status:'QUEUED'}, where:{id}}); alert('Job in Queue – Worker rendert automatisch.'); loadVideos(); } else if(act==='posted'){ await api('update','videos',{values:{status:'POSTED'}, where:{id}}); loadVideos(); } else if(act==='del'){ if(!confirm('Eintrag löschen?')) return; await api('delete','videos',{where:{id}}); loadVideos(); } }
-
-    // ===== MUSIC PRESETS =====
-    const MUSIC=['Corporate Future Bass','Uplifting Motivational','Dreams','Upbeat Technology','Epic Inspire','Pop Dance','LoFi Chillhop','Summer Vibes','Keine Musik','App-Sound (Draft)'];
-    MUSIC.forEach(m=>{ const o=document.createElement('option'); o.textContent=m; $('music').appendChild(o); });
-
-    // Start
-    loadAccountsToComposer(); loadVideos();
-  </script>
 </body>
 </html>
