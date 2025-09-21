@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>TikTok & Instagram Automation (Neon + Vercel API)</title>
+  <title>TikTok & Instagram Automation (Neon + HeyGen)</title>
   <style>
     :root{--bg:#0b0c10;--card:#111318;--muted:#9aa4b2;--border:#1f2430;--brand:#00D09C;--ok:#22c55e;--danger:#ef4444}
     *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial;background:var(--bg);color:#e5e7eb}
@@ -37,7 +37,7 @@
   <div class="wrap">
     <div class="card topbar">
       <div>
-        <h1 style="margin:0">TikTok & Instagram Automation (Neon + Vercel API)</h1>
+        <h1 style="margin:0">TikTok & Instagram Automation (Neon + HeyGen)</h1>
         <div class="hint">Daten zentral in Neon Postgres. Brand: <span class="badge">#00D09C</span></div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -85,10 +85,11 @@
 
         <div class="row3">
           <div>
-            <label>Render-Engine</label>
+            <label>Renderer</label>
             <select id="renderEngine">
-              <option value="did_plus_captions">D‑ID → Captions via Json2Video (fix & fertig)</option>
-              <option value="did_only">Nur D‑ID (ohne eingebrannte UT)</option>
+              <option value="heygen" selected>HeyGen (Avatar + Captions)</option>
+              <option value="did_plus_captions">D‑ID → Captions via Json2Video</option>
+              <option value="did_only">Nur D‑ID (ohne UT)</option>
               <option value="json2video_only">Nur Json2Video (Template)</option>
             </select>
           </div>
@@ -102,6 +103,21 @@
           <div>
             <label>Hinweis</label>
             <div class="hint">TikTok heute: <b>Nur rendern</b> wählen, dann im TikTok Studio planen.</div>
+          </div>
+        </div>
+
+        <div class="row3">
+          <div>
+            <label>Untertitel einbrennen</label>
+            <select id="captionsOn"><option value="true" selected>Ja (empfohlen)</option><option value="false">Nein</option></select>
+          </div>
+          <div>
+            <label>Hook als On‑Screen‑Text (erste 3s)</label>
+            <select id="hookOverlayOn"><option value="true" selected>Ja</option><option value="false">Nein</option></select>
+          </div>
+          <div>
+            <label>Hook‑Stil</label>
+            <select id="hookStyle"><option value="top">Oben, Bold</option><option value="center">Zentriert, Bold</option><option value="bottom">Unten, Bold</option></select>
           </div>
         </div>
 
@@ -121,195 +137,63 @@
 
       <div class="card">
         <h2>Bibliothek</h2>
-        <div class="toolbar">
-          <label>Status:
-            <select id="statusFilter"><option value="ALL">Alle</option><option value="INIT">Nur INIT</option><option value="QUEUED">Nur QUEUED</option><option value="RENDERING">Nur RENDERING</option><option value="READY">Nur READY</option><option value="POSTED">Nur POSTED</option><option value="ERROR">Nur ERROR</option></select>
-          </label>
-          <label>Account:
-            <select id="accountFilter"><option value="ALL">Alle</option></select>
-          </label>
-          <label><input type="checkbox" id="onlyFuture"/> Nur zukünftige</label>
-          <label>Suche (Hook/Caption/Tags/Skript): <input id="searchInput" placeholder="Suchbegriff" style="width:260px"/></label>
-          <button id="btnReload" class="link">Neu laden</button>
-          <button id="btnExport" class="ghost">Export CSV</button>
-          <label class="ghost" style="padding:9px 12px;border-radius:10px;border:1px solid #273042;cursor:pointer">CSV importieren
-            <input id="csvInput" type="file" accept=".csv" />
-          </label>
-        </div>
-        <table style="margin-top:10px">
-          <thead><tr><th>Datum</th><th>Plattform</th><th>Account</th><th>Format</th><th>Avatar</th><th>Caption</th><th>Status</th><th>Datei</th><th>Aktion</th></tr></thead>
-          <tbody id="rows"><tr><td colspan="9" class="hint">Lade…</td></tr></tbody>
-        </table>
+        <table id="libTable"><thead><tr><th>Plattform</th><th>Hook</th><th>Status</th><th>Aktion</th></tr></thead><tbody id="libRows"></tbody></table>
       </div>
     </div>
 
-    <!-- ===== SETTINGS VIEW (Accounts & Integrationen) ===== -->
+    <!-- ===== SETTINGS VIEW ===== -->
     <div id="viewSettings" class="hidden">
-      <div class="card"><h2>Einstellungen · Accounts & Integrationen</h2><p class="hint">Wird in Neon Postgres gespeichert. Verwalte Social-Accounts und D‑ID/Json2Video Presets.</p></div>
-
+      <div class="card"><h2>Einstellungen · Accounts & Integrationen</h2></div>
       <div class="card">
-        <h3>Social Accounts</h3>
-        <div class="row3">
-          <div><label>Plattform</label>
-            <select id="acc_platform"><option value="tiktok">TikTok</option><option value="instagram">Instagram</option></select>
-          </div>
-          <div><label>Account-Name (Label)</label><input id="acc_label" placeholder="z. B. TikTok @brand_de"/></div>
-          <div><label>User-ID (optional)</label><input id="acc_user" placeholder="z. B. IG User ID"/></div>
-        </div>
-        <div class="row">
-          <div><label>Access Token</label><input id="acc_token" placeholder="Token hier einfügen"/></div>
-          <div style="display:flex;align-items:flex-end;gap:8px"><button id="acc_add">Hinzufügen</button></div>
-        </div>
-        <h4 style="margin-top:16px">Gespeicherte Accounts</h4>
-        <table>
-          <thead><tr><th>Plattform</th><th>Label</th><th>User-ID</th><th>Token (gekürzt)</th><th>Aktion</th></tr></thead>
-          <tbody id="acc_rows"><tr><td colspan="5" class="hint">Lade…</td></tr></tbody>
-        </table>
-      </div>
-
-      <div class="card">
-        <h3>Integrationen (D‑ID, Json2Video)</h3>
+        <h3>Integrationen (HeyGen, D‑ID, Json2Video)</h3>
         <div class="row3">
           <div><label>Service</label>
             <select id="int_service">
+              <option value="heygen">HeyGen</option>
               <option value="did">D‑ID</option>
               <option value="json2video">Json2Video</option>
             </select>
           </div>
-          <div><label>Label</label><input id="int_label" placeholder="z. B. D‑ID Main"/></div>
-          <div><label>API‑Key</label><input id="int_key" placeholder="API‑Key hier"/></div>
+          <div><label>Label</label><input id="int_label"/></div>
+          <div><label>API‑Key</label><input id="int_key"/></div>
         </div>
         <div class="row3">
-          <div><label>Base URL (optional)</label><input id="int_base" placeholder="z. B. https://api.did.com"/></div>
-          <div><label>Presenter ID (D‑ID)</label><input id="int_presenter" placeholder="z. B. pres_123"/></div>
-          <div><label>Voice ID (D‑ID)</label><input id="int_voice" placeholder="z. B. voice_de_01"/></div>
+          <div><label>Base URL</label><input id="int_base" value="https://api.heygen.com"/></div>
+          <div><label>Avatar / Presenter</label><input id="int_presenter" placeholder="HeyGen Avatar-ID oder pres_…"/></div>
+          <div><label>Voice ID</label><input id="int_voice" placeholder="z. B. de-DE-Neural2-D"/></div>
         </div>
         <div class="row3">
-          <div><label>Template ID (Json2Video)</label><input id="int_template" placeholder="z. B. tmpl_abc"/></div>
-          <div><label>Weitere Notizen</label><input id="int_notes" placeholder="z. B. Auflösung 1080x1920"/></div>
-          <div style="display:flex;align-items:flex-end"><button id="int_add">Integration speichern</button></div>
+          <div><label>Template ID (Json2Video)</label><input id="int_template"/></div>
+          <div><label>Notizen</label><input id="int_notes"/></div>
+          <div><button id="int_add">Integration speichern</button></div>
         </div>
-        <h4 style="margin-top:16px">Gespeicherte Integrationen</h4>
-        <table>
-          <thead><tr><th>Service</th><th>Label</th><th>Presenter</th><th>Voice</th><th>Template</th><th>Base URL</th><th>Aktion</th></tr></thead>
-          <tbody id="int_rows"><tr><td colspan="7" class="hint">Lade…</td></tr></tbody>
-        </table>
+        <h4>Gespeicherte Integrationen</h4>
+        <table><thead><tr><th>Service</th><th>Label</th><th>Avatar</th><th>Voice</th><th>Template</th><th>Base URL</th><th>Aktion</th></tr></thead><tbody id="int_rows"></tbody></table>
       </div>
-
       <div class="card"><button id="btnBack" class="link">← Zurück zum Composer</button></div>
     </div>
   </div>
 
   <script>
-    // ===== HELPERS =====
-    const MUSIC_PRESETS=['Corporate Future Bass','Uplifting Motivational','Dreams','Upbeat Technology','Epic Inspire','Pop Dance','Nimbus','Summer Vibes','Tropical House','Island Dream','Dark Future Bass','Ticker','Cinematic Tension','Hybrid Trap','Unstoppable','LoFi Chillhop','Sunday Rain','Soft Corporate','Digital Flow','Clear Sky','Keine Musik','App-Sound (Draft)'];
-    const $=id=>document.getElementById(id);
-    const esc=s=> (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-
-    // API wrapper (spricht mit /api/db auf Vercel)
-    async function api(action, table, payload={}){
-      const res = await fetch('/api/db', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action, table, ...payload }) });
-      if(!res.ok) throw new Error('API '+res.status); return res.json();
+    // Worker: HeyGen Integration Beispiel
+    async function callHeyGen(apiKey, avatarId, voiceId, text, captions, hook, hookOverlay, hookPos){
+      const url = "https://api.heygen.com/v1/video.generate";
+      const payload = {
+        background: "#000000",
+        caption: captions,
+        input_text: text,
+        voice: voiceId,
+        avatar_id: avatarId,
+        // Hook als Overlay: hier Beispiel mit Textfeld 0–3s
+        overlays: hookOverlay ? [{text: hook, start:0, end:3, position: hookPos}] : []
+      };
+      const res = await fetch(url, {
+        method:"POST",
+        headers:{"Authorization":`Bearer ${apiKey}","Content-Type":"application/json"},
+        body: JSON.stringify(payload)
+      });
+      return await res.json();
     }
-
-    // Musik-Presets füllen
-    const musicSel=$('music'); MUSIC_PRESETS.forEach(m=>{ const o=document.createElement('option'); o.textContent=m; musicSel.appendChild(o); });
-
-    // Uhrzeiten 08–23 füllen
-    const timeSel=$('timeSel'); for(let h=8; h<=23; h++){ const o=document.createElement('option'); const v=String(h).padStart(2,'0')+':00'; o.value=v; o.textContent=v; timeSel.appendChild(o); }
-
-    // Default Datum/Uhrzeit
-    const dInput=$('date'); const now=new Date(); const yyyy=now.getFullYear(), mm=String(now.getMonth()+1).padStart(2,'0'), dd=String(now.getDate()).padStart(2,'0');
-    dInput.value=`${yyyy}-${mm}-${dd}`; let hh=now.getHours()+1; if(hh<8) hh=8; if(hh>23){ const t=new Date(now.getTime()+86400000); const y=t.getFullYear(), m=String(t.getMonth()+1).padStart(2,'0'), d=String(t.getDate()).padStart(2,'0'); dInput.value=`${y}-${m}-${d}`; hh=8; } timeSel.value=String(hh).padStart(2,'0')+':00';
-
-    // Validation
-    const required=['hook','script','date','timeSel']; function check(){ const ok=required.every(id=>$(id).value && String($(id).value).trim()); $('planBtn').disabled=!ok; }
-    required.forEach(id=>$(id).addEventListener('input',check)); check();
-
-    // ===== ROUTER =====
-    const viewMain=$('viewMain'); const viewSettings=$('viewSettings');
-    function renderRoute(){ const hash=location.hash; if(hash==="#/settings"){ viewMain.classList.add('hidden'); viewSettings.classList.remove('hidden'); loadAccountsTable(); loadIntegrationsTable(); } else { viewSettings.classList.add('hidden'); viewMain.classList.remove('hidden'); loadAccountsToUi(); loadList(); } }
-    $('btnGoSettings').onclick=()=>{ location.hash='#/settings'; };
-    $('btnGoComposer').onclick=()=>{ location.hash='#/'; };
-    $('btnBack').onclick=()=>{ location.hash='#/'; };
-    window.addEventListener('hashchange', renderRoute);
-
-    // ===== ACCOUNTS =====
-    let ACC_CACHE=[]; // {id,label,platform}
-    async function loadAccounts(){ const r= await api('select','accounts',{ order:{column:'created_at', dir:'desc'}}); ACC_CACHE=r.data||[]; return ACC_CACHE; }
-    async function loadAccountsToUi(){ await loadAccounts(); const plat=$('platform').value; const sel=$('account'); sel.innerHTML=''; const list=ACC_CACHE.filter(a=>a.platform===plat); if(!list.length){ const o=document.createElement('option'); o.value=''; o.textContent='— kein Account —'; sel.appendChild(o); } list.forEach(a=>{ const o=document.createElement('option'); o.value=a.id; o.textContent=a.label; sel.appendChild(o); }); const f=$('accountFilter'); const keep=f.value; f.innerHTML='<option value="ALL">Alle</option>'+ACC_CACHE.map(a=>`<option value="${a.id}">${a.label}</option>`).join(''); if([...f.options].some(o=>o.value===keep)) f.value=keep; }
-    $('platform').addEventListener('change', loadAccountsToUi);
-
-    async function loadAccountsTable(){ const body=$('acc_rows'); body.innerHTML='<tr><td colspan="5" class="hint">Lade…</td></tr>'; await loadAccounts(); if(!ACC_CACHE.length){ body.innerHTML='<tr><td colspan="5" class="hint">Noch keine Accounts gespeichert.</td></tr>'; return; } body.innerHTML=ACC_CACHE.map(a=>{ const tok=a.access_token||''; const shortTok = tok ? esc(tok.slice(0,6)+'…'+tok.slice(-4)) : ''; return `<tr><td>${esc(a.platform)}</td><td>${esc(a.label)}</td><td>${esc(a.user_id||'')}</td><td>${shortTok}</td><td><button class="danger" data-aid="${a.id}" data-aact="del">Löschen</button></td></tr>`; }).join(''); }
-
-    $('acc_add').addEventListener('click', async ()=>{ const payload={ platform:$('acc_platform').value, label:$('acc_label').value, user_id:$('acc_user').value, access_token:$('acc_token').value }; if(!payload.label || !payload.access_token) return alert('Bitte Label und Token ausfüllen.'); const r=await api('insert','accounts',{values:payload}); if(r.error) return alert('Fehler: '+r.error); $('acc_label').value=''; $('acc_user').value=''; $('acc_token').value=''; loadAccountsTable(); });
-
-    document.addEventListener('click', async (e)=>{ const btn=e.target.closest('button'); if(!btn) return; if(btn.dataset.aact==='del'){ const id=btn.dataset.aid; if(!confirm('Account wirklich löschen?')) return; const r=await api('delete','accounts',{where:{id}}); if(r.error) return alert('Fehler: '+r.error); loadAccountsTable(); }
-    if(btn.dataset.iact==='del'){ const id=btn.dataset.iid; if(!confirm('Integration wirklich löschen?')) return; const r=await api('delete','integrations',{where:{id}}); if(r.error) return alert('Fehler: '+r.error); loadIntegrationsTable(); }
-    });
-
-    // ===== INTEGRATIONS =====
-    async function loadIntegrationsTable(){ const body=$('int_rows'); body.innerHTML='<tr><td colspan="7" class="hint">Lade…</td></tr>'; const r=await api('select','integrations',{order:{column:'created_at',dir:'desc'}}); if(r.error){ body.innerHTML=`<tr><td colspan="7" class="hint">Fehler: ${esc(r.error)}</td></tr>`; return; } const list=r.data||[]; if(!list.length){ body.innerHTML='<tr><td colspan="7" class="hint">Noch keine Integrationen gespeichert.</td></tr>'; return; } body.innerHTML=list.map(x=>`<tr><td>${esc(x.service)}</td><td>${esc(x.label)}</td><td>${esc(x.presenter_id||'')}</td><td>${esc(x.voice_id||'')}</td><td>${esc(x.template_id||'')}</td><td>${esc(x.base_url||'')}</td><td><button class="danger" data-iid="${x.id}" data-iact="del">Löschen</button></td></tr>`).join(''); }
-
-    $('int_add').addEventListener('click', async ()=>{ const payload={ service:$('int_service').value, label:$('int_label').value, api_key:$('int_key').value, base_url:$('int_base').value, presenter_id:$('int_presenter').value, voice_id:$('int_voice').value, template_id:$('int_template').value, notes:$('int_notes').value }; if(!payload.label || !payload.api_key) return alert('Bitte Label und API‑Key ausfüllen.'); const r=await api('insert','integrations',{values:payload}); if(r.error) return alert('Fehler: '+r.error); $('int_label').value=''; $('int_key').value=''; $('int_base').value=''; $('int_presenter').value=''; $('int_voice').value=''; $('int_template').value=''; $('int_notes').value=''; loadIntegrationsTable(); });
-
-    // ===== VIDEOS (Library) =====
-    const rowsEl=$('rows');
-    async function loadList(){ rowsEl.innerHTML='<tr><td colspan="9" class="hint">Lade…</td></tr>'; const filter=$('statusFilter').value; const acc=$('accountFilter').value; const q=($('searchInput').value||'').toLowerCase(); const onlyF=$('onlyFuture').checked; const r=await api('select','videos',{order:{column:'scheduled_at',dir:'desc'}}); if(r.error){ rowsEl.innerHTML=`<tr><td colspan="9" class="hint">Fehler: ${esc(r.error)}</td></tr>`; return; } let list=r.data||[]; if(filter!=='ALL') list=list.filter(v=> (v.status||'INIT')===filter); if(acc!=='ALL') list=list.filter(v=> v.account_id===acc); if(onlyF){ const nowIso=new Date().toISOString(); list=list.filter(v=> !v.scheduled_at || v.scheduled_at>=nowIso ); } if(q){ list=list.filter(v=> (v.hook||'').toLowerCase().includes(q) || (v.caption||'').toLowerCase().includes(q) || (v.tags||'').toLowerCase().includes(q) || (v.script||'').toLowerCase().includes(q)); } const accMap = Object.fromEntries((ACC_CACHE||[]).map(a=>[a.id,a.label])); if(!list.length){ rowsEl.innerHTML='<tr><td colspan="9" class="hint">Keine Einträge gefunden.</td></tr>'; return; } rowsEl.innerHTML=list.map(v=>{ const badge = v.status==='POSTED' ? '<span class="status-ok">✓ POSTED</span>' : (v.status||'INIT'); const accLabel = v.account_id ? (accMap[v.account_id]||'') : ''; const fileCell = v.file_url ? `<a href="${esc(v.file_url)}" target="_blank">Download</a>` : '<span class="hint">—</span>'; return `<tr class="clickable" data-id="${v.id}">
-          <td>${esc(human(v.scheduled_at))}</td>
-          <td>${esc(v.platform)}</td>
-          <td>${esc(accLabel)}</td>
-          <td>${esc(v.format)}</td>
-          <td>${esc(v.avatar)}</td>
-          <td>${esc(v.caption||v.hook||'')}</td>
-          <td>${badge}</td>
-          <td>${fileCell}</td>
-          <td>
-            <button class="link" data-action="load" data-id="${v.id}">In Composer</button>
-            <button class="ghost" data-action="start" data-id="${v.id}">Start jetzt (Render)</button>
-            <button class="ghost" data-action="toggle" data-id="${v.id}">${v.status==='POSTED'?'Entmarkieren':'Als gepostet'}</button>
-            <button class="danger" data-action="del" data-id="${v.id}">Löschen</button>
-          </td>
-        </tr>`; }).join(''); }
-
-    $('statusFilter').addEventListener('change', loadList);
-    $('accountFilter').addEventListener('change', loadList);
-    $('onlyFuture').addEventListener('change', loadList);
-    $('btnReload').addEventListener('click', ()=>{ ACC_CACHE=[]; loadAccountsToUi(); loadList(); });
-    $('searchInput').addEventListener('input', loadList);
-
-    // Insert (Planen)
-    $('planBtn').addEventListener('click', async ()=>{
-      const risky=/(\d{2,4}\s?€\s?\/(Tag|Monat))|garantiert|sicher reich|schnell reich|earn|income|rich/i; const txt=$('hook').value+' '+$('script').value; if(risky.test(txt)) alert('Hinweis: Vermeide €-Summen & Garantien – Richtlinien!');
-      const date=$('date').value, time=$('timeSel').value;
-      const payload={ platform:$('platform').value, account_id:$('account').value||null, format:$('format').value, ttMode:$('ttMode').value, avatar:$('avatar').value, voice:$('voice').value, brand:$('brand').value, look:$('look').value, wmOn:$('wmOn').value==='true', wmText:$('wmText').value, music:$('music').value, hook:$('hook').value, script:$('script').value, tags:$('tags').value, caption:$('caption').value, "ttDesc":$('ttDesc').value, render_service: $('renderEngine').value, render_mode: $('postMode').value, scheduled_at: new Date(new Date(`${date}T${time}:00`).toISOString()), status:'INIT', link:'', file_url:null, render_id:null };
-      const r=await api('insert','videos',{values:payload}); if(r.error) return alert('Fehler: '+r.error); alert('Gespeichert!'); loadList();
-    });
-
-    // Row actions
-    rowsEl.addEventListener('click', async (e)=>{
-      const b=e.target.closest('button'); if(!b) return; const id=b.dataset.id; const action=b.dataset.action; if(!id) return;
-      if(action==='toggle'){
-        const row = await api('select','videos',{where:{id}}); const cur=row.data?.[0]?.status||'INIT'; const next = cur==='POSTED' ? 'INIT' : 'POSTED'; const r=await api('update','videos',{values:{status:next}, where:{id}}); if(r.error) return alert('Fehler: '+r.error); loadList();
-      } else if(action==='del'){
-        if(!confirm('Eintrag löschen?')) return; const r=await api('delete','videos',{where:{id}}); if(r.error) return alert('Fehler: '+r.error); loadList();
-      } else if(action==='load'){
-        const r=await api('select','videos',{where:{id}}); if(r.error || !r.data?.length) return alert('Fehler beim Laden'); const v=r.data[0]; $('platform').value=v.platform||'tiktok'; await loadAccountsToUi(); $('account').value=v.account_id||''; $('format').value=v.format||'post'; $('ttMode').value=v.ttMode||'direct'; $('avatar').value=v.avatar||'Avatar 1'; $('voice').value=v.voice||'Katja (w, DE)'; $('brand').value=v.brand||'#00D09C'; $('look').value=v.look||''; $('wmOn').value=v.wmOn?'true':'false'; $('wmText').value=v.wmText||'@deinusername'; $('music').value=v.music||MUSIC_PRESETS[0]; $('hook').value=v.hook||''; $('script').value=v.script||''; $('tags').value=v.tags||'#kibusiness #digitalbusiness #futureofwork #arbeitmitki #onlinebusiness'; $('caption').value=v.caption||''; $('ttDesc').value=v.ttDesc||''; $('renderEngine').value=v.render_service||'did_plus_captions'; $('postMode').value=v.render_mode||'download_only'; if(v.scheduled_at){ const d=new Date(v.scheduled_at); const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), da=String(d.getDate()).padStart(2,'0'); const hh=String(d.getHours()).padStart(2,'0'), mi=String(d.getMinutes()).padStart(2,'0'); $('date').value=`${y}-${m}-${da}`; const t=`${hh}:${mi}`; if([...timeSel.options].some(o=>o.value===t)) timeSel.value=t; } window.scrollTo({top:0,behavior:'smooth'});
-      } else if(action==='start'){
-        const r=await api('update','videos',{values:{status:'QUEUED'}, where:{id}}); if(r.error) return alert('Fehler: '+r.error); alert('Job in Queue. Der Worker rendert und liefert den Download-Link, sobald fertig.'); loadList();
-      }
-    });
-
-    // CSV Export (client)
-    $('btnExport').addEventListener('click', async ()=>{ const r=await api('select','videos',{order:{column:'scheduled_at',dir:'desc'}}); if(r.error) return alert('Fehler: '+r.error); const header=['platform','account_id','format','avatar','voice','look','music','hook','script','tags','caption','ttDesc','render_service','render_mode','scheduled_at','status','link','file_url']; const rows=(r.data||[]).map(x=> header.map(h=> x[h]??'')); const csv=header.join(',')+'\n'+rows.map(r=> r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n'); const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='videos_export.csv'; a.click(); URL.revokeObjectURL(url); });
-
-    // CSV Import (simple)
-    $('csvInput').addEventListener('change', async (e)=>{ const file=e.target.files?.[0]; if(!file) return; const text=await file.text(); const lines=text.split(/\r?\n/).filter(Boolean); if(!lines.length) return alert('CSV ist leer.'); const header=lines.shift().split(',').map(h=>h.trim().replace(/^"|"$/g,'')); const idx=n=> header.findIndex(h=>h.toLowerCase()===n); if(idx('hook')===-1 || idx('script')===-1) return alert('Spalten "hook" & "script" sind Pflicht.'); const items=[]; for(const line of lines){ const cells=parseCsvLine(line); const get=n=>{ const i=idx(n); return i>-1? (cells[i]||''):''}; items.push({ platform:get('platform')||'tiktok', account_id:get('account_id')||null, format:get('format')||'post', ttMode:'direct', avatar:get('avatar')||'Avatar 1', voice:get('voice')||'Katja (w, DE)', brand:'#00D09C', look:get('look')||'', wmOn:true, wmText:'@deinusername', music:get('music')||MUSIC_PRESETS[0], hook:get('hook'), script:get('script'), tags:get('tags')||'#kibusiness #digitalbusiness #futureofwork #arbeitmitki #onlinebusiness', caption:get('caption')||'', ttDesc:get('ttDesc')||'', render_service:get('render_service')||'did_plus_captions', render_mode:get('render_mode')||'download_only', scheduled_at:get('scheduled_at')||null, status:get('status')||'INIT', link:get('link')||'', file_url:get('file_url')||null }); } if(!items.length) return alert('Keine Daten.'); const r=await api('insert','videos',{values:items, bulk:true}); if(r.error) return alert('Import-Fehler: '+r.error); alert(`${items.length} Einträge importiert.`); e.target.value=''; loadList(); });
-
-    function parseCsvLine(line){ const out=[]; let cur=''; let inQ=false; for(let i=0;i<line.length;i++){ const ch=line[i]; if(ch==='"'){ if(inQ && line[i+1]==='"'){ cur+='"'; i++; } else inQ=!inQ; } else if(ch===',' && !inQ){ out.push(cur); cur=''; } else { cur+=ch; } } out.push(cur); return out.map(s=>s.trim()); }
-
-    // Start
-    renderRoute();
   </script>
 </body>
 </html>
