@@ -1,89 +1,67 @@
-// /api/worker.js – HeyGen Worker (QUEUED → RENDERING → READY)
+// /api/worker.js — HeyGen V2 Generate + V1 Status (READY mit file_url)
 import { Pool } from 'pg';
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-async function fetchAll(client, q, params = []) {
-  const r = await client.query(q, params);
-  return r.rows;
-}
-
-async function getHeyGenIntegration(client) {
-  const r = await fetchAll(
-    client,
-    `SELECT * FROM integrations WHERE service='heygen' ORDER BY created_at DESC LIMIT 1`
-  );
-  if (!r.length) throw new Error('Keine HeyGen-Integration gefunden');
+async function qAll(c, sql, p = []) { const r = await c.query(sql, p); return r.rows; }
+async function getHeyGen(c) {
+  const [x] = await qAll(c, `select * from integrations where service='heygen' order by created_at desc limit 1`);
+  if (!x) throw new Error('Keine HeyGen-Integration gefunden');
   return {
-    apiKey: r[0].api_key,
-    base: (r[0].base_url || 'https://api.heygen.com').replace(/\/$/, ''),
-    avatarId: r[0].presenter_id,
-    voiceId: r[0].voice_id || 'de-DE-Neural2-D',
+    apiKey: x.api_key,
+    base: (x.base_url || 'https://api.heygen.com').replace(/\/$/, ''),
+    avatarId: x.presenter_id,             // HeyGen Avatar-ID
+    voiceId: x.voice_id || 'de-DE-Neural2-D' // HeyGen Voice-ID
   };
 }
 
-async function startHeyGenJob({ apiKey, base, avatarId, voiceId, text, captionsOn, hookText, hookOn, hookPos }) {
-  const overlays = hookOn
-    ? [{ text: hookText || '', start: 0, end: 3, position: hookPos || 'top' }]
-    : [];
-
-  const payload = {
-    input_text: text,
-    avatar_id: avatarId,
-    voice: voiceId,
-    background: '#000000',
-    caption: !!captionsOn,
-    overlays,
+// V2: Create video
+async function heygenCreate({ apiKey, base, avatarId, voiceId, text, captionsOn }) {
+  const body = {
+    caption: !!captionsOn,                      // eingebrannte Captions
+    dimension: { width: 1080, height: 1920 },  // 9:16
+    video_inputs: [{
+      character: { type: 'avatar', avatar_id: avatarId },
+      voice: { type: 'text', voice_id: voiceId, input_text: text },
+      background: { type: 'color', value: '#000000' }
+    }]
   };
-
-  // Haupt-Pfad
-  let res = await fetch(`${base}/v1/video.generate`, {
+  const r = await fetch(`${base}/v2/video/generate`, {
     method: 'POST',
     headers: { 'X-Api-Key': apiKey, 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body)
   });
-
-  // Fallback-Pfad
-  if (res.status === 404) {
-    res = await fetch(`${base}/v1/videos/generate`, {
-      method: 'POST',
-      headers: { 'X-Api-Key': apiKey, 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-  }
-
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error(`HeyGen start failed: ${res.status} ${t}`);
-  }
-  return res.json(); // { video_id | task_id }
+  if (!r.ok) throw new Error(`HeyGen start failed: ${r.status} ${await r.text()}`);
+  const j = await r.json();
+  const video_id = j?.data?.video_id || j?.video_id || j?.id;
+  if (!video_id) throw new Error('Kein video_id erhalten');
+  return video_id;
 }
 
-async function pollHeyGen({ apiKey, base, video_id }) {
+// V1: Poll status
+async function heygenStatus({ apiKey, base, video_id }) {
   for (let i = 0; i < 60; i++) {
-    const r = await fetch(`${base}/v1/video.status?video_id=${encodeURIComponent(video_id)}`, {
-      headers: { 'X-Api-Key': apiKey },
+    const r = await fetch(`${base}/v1/video_status.get?video_id=${encodeURIComponent(video_id)}`, {
+      headers: { 'X-Api-Key': apiKey }
     });
     const j = await r.json().catch(() => ({}));
-    if (j?.status === 'completed' && j?.video_url) return j.video_url;
-    if (j?.status === 'failed') throw new Error('HeyGen job failed');
-    await new Promise((s) => setTimeout(s, 5000));
+    const d = j?.data || {};
+    if (d.status === 'completed' && (d.video_url_caption || d.video_url)) {
+      return d.video_url_caption || d.video_url; // bevorzugt: mit Captions
+    }
+    if (d.status === 'failed') throw new Error(d?.error?.message || 'HeyGen job failed');
+    await new Promise(s => setTimeout(s, 5000));
   }
   throw new Error('HeyGen timeout');
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET' && req.method !== 'POST') {
-    return res.status(405).json({ error: 'Use GET/POST' });
-  }
-
-  const client = await pool.connect();
+  if (req.method !== 'GET' && req.method !== 'POST') return res.status(405).json({ error: 'Use GET/POST' });
+  const c = await pool.connect();
   try {
     const now = new Date().toISOString();
 
-    // Jobs abholen
-    const jobs = await fetchAll(
-      client,
-      `
+    // Jobs: QUEUED zuerst, dann fällige INIT
+    const jobs = await qAll(c, `
       SELECT * FROM videos
       WHERE (
         status='QUEUED'
@@ -92,53 +70,45 @@ export default async function handler(req, res) {
       AND (render_service='heygen' OR render_service IS NULL)
       ORDER BY (status='QUEUED') DESC, scheduled_at NULLS FIRST
       LIMIT 3
-    `,
-      [now]
-    );
+    `, [now]);
 
     if (!jobs.length) return res.json({ ok: true, processed: 0 });
 
-    const integ = await getHeyGenIntegration(client);
+    const hg = await getHeyGen(c);
     let processed = 0;
 
     for (const v of jobs) {
       try {
-        await client.query(`UPDATE videos SET status='RENDERING' WHERE id=$1`, [v.id]);
+        await c.query(`update videos set status='RENDERING' where id=$1`, [v.id]);
 
-        const start = await startHeyGenJob({
-          apiKey: integ.apiKey,
-          base: integ.base,
-          avatarId: integ.avatarId,
-          voiceId: integ.voiceId,
-          text: v.script || v.hook || '',
-          captionsOn: v.captions_on ?? true,
-          hookText: v.hook || '',
-          hookOn: v.hook_overlay_on ?? true,
-          hookPos: v.hook_pos || 'top',
+        // Hook in die ersten Sekunden: Hook + Script zusammengeben (Captions zeigen beides)
+        const text = [v.hook, v.script].filter(Boolean).join('\n\n');
+
+        const video_id = await heygenCreate({
+          apiKey: hg.apiKey,
+          base: hg.base,
+          avatarId: hg.avatarId,
+          voiceId: hg.voiceId,
+          text,
+          captionsOn: v.captions_on ?? true
         });
 
-        const videoId = start.video_id || start.task_id;
-        if (!videoId) throw new Error('Kein video_id erhalten');
+        const fileUrl = await heygenStatus({ apiKey: hg.apiKey, base: hg.base, video_id });
 
-        const url = await pollHeyGen({ apiKey: integ.apiKey, base: integ.base, video_id: videoId });
-
-        await client.query(
-          `UPDATE videos SET status='READY', file_url=$1, render_id=$2, link='' WHERE id=$3`,
-          [url, videoId, v.id]
+        await c.query(
+          `update videos set status='READY', file_url=$1, render_id=$2, link='' where id=$3`,
+          [fileUrl, video_id, v.id]
         );
         processed++;
       } catch (e) {
-        await client.query(`UPDATE videos SET status='ERROR', link=$1 WHERE id=$2`, [
-          String(e.message || e),
-          v.id,
-        ]);
+        await c.query(`update videos set status='ERROR', link=$1 where id=$2`, [String(e.message || e), v.id]);
       }
     }
 
-    return res.json({ ok: true, processed });
+    res.json({ ok: true, processed });
   } catch (e) {
-    return res.status(500).json({ error: String(e.message || e) });
+    res.status(500).json({ error: String(e.message || e) });
   } finally {
-    await client.release();
+    await c.release();
   }
 }
