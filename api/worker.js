@@ -1,11 +1,9 @@
-// /api/worker.js
+// /api/worker.js – HeyGen Worker (priorisiert QUEUED, setzt READY + file_url)
 import { Pool } from 'pg';
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-async function fetchAll(client, q, params = []) {
-  const r = await client.query(q, params);
-  return r.rows;
-}
+async function fetchAll(client, q, params = []) { const r = await client.query(q, params); return r.rows; }
+async function fetchOne(client, q, params = []) { const r = await client.query(q, params); return r.rows[0]; }
 
 async function getHeyGenIntegration(client) {
   const r = await fetchAll(client, `SELECT * FROM integrations WHERE service='heygen' ORDER BY created_at DESC LIMIT 1`);
@@ -20,32 +18,15 @@ async function getHeyGenIntegration(client) {
 
 async function startHeyGenJob({ apiKey, base, avatarId, voiceId, text, captionsOn, hookText, hookOn, hookPos }) {
   const overlays = hookOn ? [{ text: hookText || '', start: 0, end: 3, position: hookPos || 'top' }] : [];
-  const payload = {
-    input_text: text,
-    avatar_id: avatarId,
-    voice: voiceId,
-    background: '#000000',
-    caption: !!captionsOn,
-    overlays
-  };
-
-  const res = await fetch(`${base.replace(/\/$/, '')}/v1/video.generate`, {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error(`HeyGen start failed: ${res.status} ${t}`);
-  }
-  return res.json(); // { video_id: '...', task_id: '...' }
+  const payload = { input_text: text, avatar_id: avatarId, voice: voiceId, background: '#000000', caption: !!captionsOn, overlays };
+  const res = await fetch(`${base.replace(/\/$/, '')}/v1/video.generate`, { method: 'POST', headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+  if (!res.ok) { const t = await res.text(); throw new Error(`HeyGen start failed: ${res.status} ${t}`); }
+  return res.json(); // { video_id, task_id }
 }
 
 async function pollHeyGen({ apiKey, base, video_id }) {
   for (let i = 0; i < 60; i++) {
-    const r = await fetch(`${base.replace(/\/$/, '')}/v1/video.status?video_id=${encodeURIComponent(video_id)}`, {
-      headers: { 'Authorization': `Bearer ${apiKey}` }
-    });
+    const r = await fetch(`${base.replace(/\/$/, '')}/v1/video.status?video_id=${encodeURIComponent(video_id)}`, { headers: { 'Authorization': `Bearer ${apiKey}` } });
     const j = await r.json();
     if (j.status === 'completed' && j.video_url) return j.video_url;
     if (j.status === 'failed') throw new Error('HeyGen job failed');
@@ -55,19 +36,20 @@ async function pollHeyGen({ apiKey, base, video_id }) {
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET' && req.method !== 'POST') {
-    return res.status(405).json({ error: 'Use GET/POST' });
-  }
+  if (req.method !== 'GET' && req.method !== 'POST') return res.status(405).json({ error: 'Use GET/POST' });
   const client = await pool.connect();
   try {
     const now = new Date().toISOString();
 
+    // === Jobs ziehen: QUEUED immer zuerst, dann fällige INIT ===
     const jobs = await fetchAll(client, `
       SELECT * FROM videos
-      WHERE (status='INIT' OR status='QUEUED')
-        AND (scheduled_at IS NULL OR scheduled_at <= $1)
-        AND (render_service='heygen' OR render_service IS NULL)
-      ORDER BY scheduled_at NULLS FIRST
+      WHERE (
+        status='QUEUED'
+        OR (status='INIT' AND (scheduled_at IS NULL OR scheduled_at <= $1))
+      )
+      AND (render_service='heygen' OR render_service IS NULL)
+      ORDER BY (status='QUEUED') DESC, scheduled_at NULLS FIRST
       LIMIT 3
     `, [now]);
 
@@ -97,17 +79,15 @@ export default async function handler(req, res) {
 
         const url = await pollHeyGen({ apiKey: integ.apiKey, base: integ.base, video_id: videoId });
 
-        await client.query(`UPDATE videos SET status='READY', file_url=$1, render_id=$2 WHERE id=$3`, [url, videoId, v.id]);
+        await client.query(`UPDATE videos SET status='READY', file_url=$1, render_id=$2, link='' WHERE id=$3`, [url, videoId, v.id]);
         processed++;
       } catch (e) {
-        console.error('Job error', v.id, e);
         await client.query(`UPDATE videos SET status='ERROR', link=$1 WHERE id=$2`, [String(e.message || e), v.id]);
       }
     }
 
     return res.json({ ok: true, processed });
   } catch (e) {
-    console.error(e);
     return res.status(500).json({ error: String(e.message || e) });
   } finally {
     await client.release();
