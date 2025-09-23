@@ -1,134 +1,280 @@
 <!doctype html>
 <html lang="de">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>TikTok & Instagram Automation (Neon + HeyGen)</title>
   <style>
     :root{--bg:#0b0c10;--card:#111318;--muted:#9aa4b2;--border:#1f2430;--brand:#00D09C;--ok:#22c55e;--danger:#ef4444}
-    *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial;background:var(--bg);color:#e5e7eb}
-    .wrap{max-width:1024px;margin:24px auto;padding:16px}
+    *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Inter,Arial;background:var(--bg);color:#e5e7eb}
+    .wrap{max-width:1060px;margin:24px auto;padding:16px}
     .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:16px}
     h1{font-size:22px;margin:0 0 12px} h2{font-size:18px;margin:8px 0}
     label{display:block;font-size:12px;color:var(--muted);margin-top:10px}
     input,select,textarea{width:100%;padding:10px;margin-top:6px;background:#0f1116;border:1px solid #2a3140;border-radius:10px;color:#e5e7eb}
     button{background:var(--brand);color:#0b0c10;border:0;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:600}
+    button.ghost{background:#263042;color:#e5e7eb;border:1px solid #273042}
+    button.danger{background:transparent;border:1px solid var(--danger);color:#fecaca}
     button:disabled{opacity:.5;cursor:not-allowed}
-    .row{display:grid;grid-template-columns:1fr 1fr; gap:12px}
-    .row3{display:grid;grid-template-columns:1fr 1fr 1fr; gap:12px}
-    .row4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr; gap:12px}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+    .row4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px}
+    .topbar{display:flex;gap:8px;align-items:center;justify-content:space-between}
+    .badge{display:inline-block;background:#151a22;border:1px solid #273042;padding:3px 8px;border-radius:999px;margin-left:6px;font-size:11px}
     .hint{font-size:12px;color:#9aa4b2}
     table{width:100%;border-collapse:collapse;font-size:13px}
     th,td{padding:8px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
-    tr.clickable{cursor:pointer}
-    tr.clickable:hover{background:#0f141a}
-    .badge{display:inline-block;background:#151a22;border:1px solid #273042;padding:3px 8px;border-radius:999px;margin-right:6px;font-size:11px}
-    .status-ok{color:var(--ok);font-weight:700}
-    .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center}
-    .toolbar input[type=file]{display:none}
-    .topbar{display:flex;gap:8px;align-items:center;justify-content:space-between}
-    .link{background:#263042;color:#e5e7eb;border:1px solid #273042}
-    .danger{background:transparent;border:1px solid var(--danger);color:#fecaca}
     .hidden{display:none}
-    @media (max-width:740px){ .row3{grid-template-columns:1fr} .row{grid-template-columns:1fr} .row4{grid-template-columns:1fr 1fr} }
+    .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+    .toolbar input[type=file]{display:none}
+    @media (max-width:740px){ .row4{grid-template-columns:1fr 1fr} .row3{grid-template-columns:1fr} .row{grid-template-columns:1fr} }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="card topbar">
-      <div>
-        <h1 style="margin:0">TikTok & Instagram Automation (Neon + HeyGen)</h1>
-        <div class="hint">Daten zentral in Neon Postgres. Brand: <span class="badge">#00D09C</span></div>
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button id="btnGoComposer">Composer</button>
-        <button id="btnGoSettings" class="link">Einstellungen</button>
-      </div>
+<div class="wrap">
+  <div class="card topbar">
+    <div>
+      <h1 style="margin:0">TikTok & Instagram Automation (Neon + HeyGen)</h1>
+      <div class="hint">Daten zentral in Neon Postgres · Brand <span class="badge">#00D09C</span></div>
     </div>
-
-    <!-- ===== MAIN VIEW (Composer + Library) ===== -->
-    <div id="viewMain">
-      <div class="card" id="composerCard">
-        <!-- Composer-Inhalte wie gehabt -->
-      </div>
-
-      <div class="card">
-        <h2>Bibliothek</h2>
-        <div class="toolbar">
-          <button id="reloadBtn">Neu laden</button>
-          <label for="csvInput" class="link">CSV importieren</label>
-          <input id="csvInput" type="file" accept=".csv" />
-        </div>
-        <table>
-          <thead><tr><th>Datum</th><th>Plattform</th><th>Hook</th><th>Status</th><th>Datei</th><th>Aktion</th></tr></thead>
-          <tbody id="videoRows"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- ===== SETTINGS VIEW ===== -->
-    <div id="viewSettings" class="hidden">
-      <!-- Einstellungen wie gehabt -->
-      <div class="card"><button id="btnBack" class="link">← Zurück zum Composer</button></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button id="btnGoComposer">Composer</button>
+      <button id="btnGoSettings" class="ghost">Einstellungen</button>
     </div>
   </div>
 
-  <script>
-    // Hilfsfunktion API-Call
-    async function api(op, table, payload) {
-      const r = await fetch('/api/db', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({op, table, ...payload})});
-      if(!r.ok) throw new Error(await r.text());
-      return r.json();
-    }
-    function esc(s){return (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+  <!-- ===== MAIN (Composer + Library) ===== -->
+  <div id="viewMain">
+    <div class="card">
+      <h2>Composer</h2>
+      <div class="row4">
+        <div><label>Plattform</label><select id="platform"><option value="tiktok">TikTok</option><option value="instagram">Instagram</option></select></div>
+        <div><label>Account</label><select id="account"></select></div>
+        <div><label>Format</label><select id="format"><option value="post">Post/Reel</option><option value="story">Story (≤15s)</option></select></div>
+        <div><label>TikTok Modus</label><select id="ttMode"><option value="direct">Direct Post</option><option value="draft">Draft (Trend-Sound später)</option></select></div>
+      </div>
 
-    async function loadVideos(){
-      const res = await api('select','videos',{limit:50,order:{column:'created_at',desc:true}});
-      const rows = res.rows||[];
-      const out = rows.map(v=>{
-        return `<tr>
-          <td>${v.scheduled_at||''}</td>
-          <td>${esc(v.platform)}</td>
-          <td>${esc(v.hook||'')}</td>
-          <td>${esc(v.status||'INIT')}${(v.status==='ERROR' && v.link)?' – '+esc(v.link):''}</td>
-          <td>${v.file_url?`<a href=\"${v.file_url}\" target=\"_blank\">Download</a>`:'—'}</td>
-          <td>
-            <button onclick=\"startNow('${v.id}')\">Start jetzt</button>
-            <button onclick=\"markPosted('${v.id}')\">Als gepostet</button>
-            <button class=\"danger\" onclick=\"delVid('${v.id}')\">Löschen</button>
-          </td>
-        </tr>`;
-      }).join('');
-      document.getElementById('videoRows').innerHTML = out;
-    }
+      <div class="row3">
+        <div><label>Avatar</label><select id="avatar"><option>Avatar 1</option><option>Avatar 2</option><option>Avatar 3</option><option>Avatar 4</option></select></div>
+        <div><label>Stimme</label><select id="voice"><option>Katja (w, DE)</option><option>Conrad (m, DE)</option><option>Ingrid (w, AT)</option><option>Leni (w, CH)</option></select></div>
+        <div><label>Brand-Farbe</label><input type="color" id="brand" value="#00D09C"/></div>
+      </div>
 
-    async function startNow(id){
-      await api('update','videos',{values:{status:'QUEUED',scheduled_at:new Date().toISOString()}, where:{id}});
-      loadVideos();
-    }
-    async function markPosted(id){
-      await api('update','videos',{values:{status:'POSTED'},where:{id}});
-      loadVideos();
-    }
-    async function delVid(id){
-      await api('delete','videos',{where:{id}});
-      loadVideos();
-    }
+      <div><label>Look / Stil</label><input id="look" placeholder="Hintergrund, Licht, Kleidung, Stimmung" value="Dunkler Hintergrund, Teal-Akzent, seriös, ruhige Mimik"/></div>
 
-    document.getElementById('reloadBtn').onclick=loadVideos;
+      <div class="row3">
+        <div><label>Wasserzeichen</label><select id="wmOn"><option value="true">Aktiv</option><option value="false">Aus</option></select></div>
+        <div><label>Wasserzeichen-Text</label><input id="wmText" placeholder="@deinusername" value="@deinusername"/></div>
+        <div><label>Musik</label><select id="music"></select></div>
+      </div>
 
-    // CSV Upload
-    document.getElementById('csvInput').addEventListener('change',async e=>{
-      const file=e.target.files[0]; if(!file) return;
+      <div class="row3">
+        <div><label>Renderer</label>
+          <select id="renderEngine">
+            <option value="heygen" selected>HeyGen (Avatar + Captions)</option>
+            <option value="did_plus_captions">D-ID → Captions via Json2Video</option>
+            <option value="did_only">Nur D-ID (ohne UT)</option>
+            <option value="json2video_only">Nur Json2Video (Template)</option>
+          </select>
+        </div>
+        <div><label>Posting-Modus</label>
+          <select id="postMode">
+            <option value="download_only">Nur rendern (Download-Link)</option>
+            <option value="auto_upload">Auto-Upload (falls konfiguriert)</option>
+          </select>
+        </div>
+        <div><label>Hinweis</label><div class="hint">TikTok aktuell: <b>Nur rendern</b> wählen und im TikTok Studio planen.</div></div>
+      </div>
+
+      <div class="row3">
+        <div><label>Untertitel einbrennen</label><select id="captionsOn"><option value="true" selected>Ja</option><option value="false">Nein</option></select></div>
+        <div><label>Hook als On-Screen-Text (erste 3s)</label><select id="hookOverlayOn"><option value="true" selected>Ja</option><option value="false">Nein</option></select></div>
+        <div><label>Hook-Stil</label><select id="hookStyle"><option value="top">Oben, Bold</option><option value="center">Zentriert, Bold</option><option value="bottom">Unten, Bold</option></select></div>
+      </div>
+
+      <div><label>Hook</label><input id="hook" value="90 % scheitern – vermeide diese 3 Fallen…"/></div>
+      <div><label>Skript (Voiceover)</label><textarea id="script" rows="5">Kurzer Beispiel-Text fürs Voiceover …</textarea></div>
+      <div><label>Hashtags</label><input id="tags" value="#kibusiness #digitalbusiness #futureofwork #arbeitmitki #onlinebusiness"/></div>
+      <div><label>Caption (Kurz-Titel)</label><input id="caption" placeholder="z. B. 'Mit KI in 7 Tagen starten'"/></div>
+      <div><label>TikTok Videobeschreibung</label><textarea id="ttDesc" rows="3" placeholder="Call-to-Action + Keywords + Hashtags"></textarea></div>
+
+      <div class="row">
+        <div><label>Datum</label><input id="date" type="date"/></div>
+        <div><label>Uhrzeit</label><select id="timeSel"></select></div>
+        <div style="display:flex;align-items:flex-end;justify-content:flex-end"><button id="planBtn" disabled>Planen / Speichern</button></div>
+      </div>
+      <p class="hint">Speicherung & Render-Start laufen über <code>/api/db</code> & <code>/api/worker</code> (Vercel + Neon).</p>
+    </div>
+
+    <div class="card">
+      <h2>Bibliothek</h2>
+      <div class="toolbar">
+        <label>Status
+          <select id="statusFilter"><option>ALLE</option><option>INIT</option><option>QUEUED</option><option>RENDERING</option><option>READY</option><option>POSTED</option><option>ERROR</option></select>
+        </label>
+        <button id="btnReload" class="ghost">Neu laden</button>
+        <input type="file" id="csvFile" accept=".csv"/>
+        <button id="btnImport" class="ghost">CSV importieren</button>
+      </div>
+      <table style="margin-top:10px">
+        <thead><tr><th>Datum</th><th>Plattform</th><th>Hook</th><th>Status</th><th>Datei</th><th>Aktion</th></tr></thead>
+        <tbody id="libRows"><tr><td colspan="6" class="hint">Lade…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== SETTINGS ===== -->
+  <div id="viewSettings" class="hidden">
+    <div class="card"><h2>Einstellungen · Accounts & Integrationen</h2></div>
+
+    <div class="card">
+      <h3>Social Accounts</h3>
+      <div class="row3">
+        <div><label>Plattform</label><select id="acc_platform"><option value="tiktok">TikTok</option><option value="instagram">Instagram</option></select></div>
+        <div><label>Account-Label</label><input id="acc_label" placeholder="z. B. TikTok @brand_de"/></div>
+        <div><label>User-ID</label><input id="acc_user" placeholder="optional"/></div>
+      </div>
+      <div class="row">
+        <div><label>Access Token</label><input id="acc_token" placeholder="Token oder leer"/></div>
+        <div style="display:flex;align-items:center;gap:8px"><button id="acc_add">Hinzufügen</button></div>
+      </div>
+      <table style="margin-top:12px"><thead><tr><th>Plattform</th><th>Label</th><th>User</th><th>Token (gekürzt)</th><th>Aktion</th></tr></thead><tbody id="acc_rows"><tr><td colspan="5" class="hint">Lade…</td></tr></tbody></table>
+    </div>
+
+    <div class="card">
+      <h3>Integrationen (HeyGen, D-ID, Json2Video)</h3>
+      <div class="row3">
+        <div><label>Service</label><select id="int_service"><option value="heygen">HeyGen</option><option value="did">D-ID</option><option value="json2video">Json2Video</option></select></div>
+        <div><label>Label</label><input id="int_label" placeholder="z. B. HeyGen Main"/></div>
+        <div><label>API-Key</label><input id="int_key" placeholder="API-Key hier"/></div>
+      </div>
+      <div class="row3">
+        <div><label>Base URL</label><input id="int_base" value="https://api.heygen.com"/></div>
+        <div><label>Avatar / Presenter</label><input id="int_presenter" placeholder="HeyGen Avatar-ID ODER D-ID pres_… ODER Bild-URL"/></div>
+        <div><label>Voice ID</label><input id="int_voice" placeholder="z. B. de-DE-Neural2-D"/></div>
+      </div>
+      <div class="row3">
+        <div><label>Template ID (Json2Video)</label><input id="int_template"/></div>
+        <div><label>Notizen</label><input id="int_notes"/></div>
+        <div style="display:flex;align-items:flex-end"><button id="int_add">Integration speichern</button></div>
+      </div>
+      <table style="margin-top:12px"><thead><tr><th>Service</th><th>Label</th><th>Avatar/Presenter</th><th>Voice</th><th>Template</th><th>Base URL</th><th>Aktion</th></tr></thead><tbody id="int_rows"><tr><td colspan="7" class="hint">Lade…</td></tr></tbody></table>
+    </div>
+
+    <div class="card"><button id="btnBack" class="ghost">← Zurück zum Composer</button></div>
+  </div>
+</div>
+
+<script>
+  // ===== Utils
+  const $=id=>document.getElementById(id);
+  const esc=s=>(s||'').toString().replace(/[&<>]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[m]));
+  const toIso=(d,t)=> new Date(`${d}T${t}:00`).toISOString();
+
+  // ===== Nav
+  const viewMain=$('viewMain'), viewSettings=$('viewSettings');
+  $('btnGoSettings').onclick=()=>{ viewMain.classList.add('hidden'); viewSettings.classList.remove('hidden'); loadAccounts(); loadIntegrations(); };
+  $('btnGoComposer').onclick=$('btnBack').onclick=()=>{ viewSettings.classList.add('hidden'); viewMain.classList.remove('hidden'); loadAccountsToComposer(); loadVideos(); };
+
+  // ===== Time defaults 08–23
+  const timeSel=$('timeSel'); for(let h=8;h<=23;h++){const v=String(h).padStart(2,'0')+':00'; const o=document.createElement('option'); o.value=v;o.textContent=v; timeSel.appendChild(o);}
+  const now=new Date(); $('date').value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  timeSel.value = String(Math.min(23,Math.max(8,now.getHours()+1))).padStart(2,'0')+':00';
+
+  // ===== API wrapper (IMPORTANT: uses 'action')
+  async function api(action, table, payload={}){
+    const res = await fetch('/api/db', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action, table, ...payload })});
+    const txt = await res.text(); let json; try{ json=JSON.parse(txt);}catch{ json={error:`Invalid JSON (${res.status})`, raw:txt};}
+    if(!res.ok) throw new Error(json.error||txt); return json;
+  }
+
+  // ===== Accounts
+  async function loadAccounts(){ const r=await api('select','accounts',{order:{column:'created_at',dir:'desc'}}); const rows=$('acc_rows'); const data=r.data||[]; rows.innerHTML = data.length? data.map(a=>`<tr><td>${esc(a.platform)}</td><td>${esc(a.label)}</td><td>${esc(a.user_id||'')}</td><td>${esc((a.access_token||'').slice(0,6))}…</td><td><button class="danger" data-aid="${a.id}" data-action="delAcc">Löschen</button></td></tr>`).join('') : '<tr><td colspan="5" class="hint">Keine Accounts</td></tr>'; document.querySelectorAll('[data-action="delAcc"]').forEach(b=> b.onclick=async()=>{ if(!confirm('Account löschen?'))return; await api('delete','accounts',{where:{id:b.dataset.aid}}); loadAccounts(); }); }
+  async function loadAccountsToComposer(){ const r=await api('select','accounts'); const sel=$('account'); const plat=$('platform').value; const list=(r.data||[]).filter(a=>a.platform===plat); sel.innerHTML = list.length? list.map(a=>`<option value="${a.id}">${esc(a.label)}</option>`).join('') : '<option value="">— kein Account —</option>'; }
+  $('platform').addEventListener('change', loadAccountsToComposer);
+  $('acc_add').onclick=async()=>{ const p={ platform:$('acc_platform').value, label:$('acc_label').value, user_id:$('acc_user').value, access_token:$('acc_token').value }; if(!p.label) return alert('Label fehlt'); await api('insert','accounts',{values:p}); $('acc_label').value=''; $('acc_user').value=''; $('acc_token').value=''; loadAccounts(); loadAccountsToComposer(); };
+
+  // ===== Integrations
+  async function loadIntegrations(){ const r=await api('select','integrations',{order:{column:'created_at',dir:'desc'}}); const body=$('int_rows'); const list=r.data||[]; body.innerHTML = list.length? list.map(x=>`<tr><td>${esc(x.service)}</td><td>${esc(x.label)}</td><td>${esc(x.presenter_id||'')}</td><td>${esc(x.voice_id||'')}</td><td>${esc(x.template_id||'')}</td><td>${esc(x.base_url||'')}</td><td><button class="danger" data-iid="${x.id}" data-action="delInt">Löschen</button></td></tr>`).join('') : '<tr><td colspan="7" class="hint">Keine Integrationen</td></tr>'; document.querySelectorAll('[data-action="delInt"]').forEach(b=> b.onclick=async()=>{ if(!confirm('Integration löschen?'))return; await api('delete','integrations',{where:{id:b.dataset.iid}}); loadIntegrations(); }); }
+  $('int_add').onclick=async()=>{ const p={ service:$('int_service').value, label:$('int_label').value, api_key:$('int_key').value, base_url:$('int_base').value, presenter_id:$('int_presenter').value, voice_id:$('int_voice').value, template_id:$('int_template').value, notes:$('int_notes').value }; if(!p.label||!p.api_key) return alert('Label + API-Key nötig'); await api('insert','integrations',{values:p}); $('int_label').value=''; $('int_key').value=''; $('int_presenter').value=''; $('int_voice').value=''; $('int_template').value=''; $('int_notes').value=''; loadIntegrations(); };
+
+  // ===== Videos – Composer
+  const REQUIRED=['hook','script','date']; const validate=()=>{ $('planBtn').disabled=!REQUIRED.every(id=> (document.getElementById(id).value||'').trim()); }; REQUIRED.forEach(id=> $(id).addEventListener('input', validate)); validate();
+  $('planBtn').onclick=async()=>{ const p={ platform:$('platform').value, account_id:$('account').value||null, format:$('format').value, ttMode:$('ttMode').value, avatar:$('avatar').value, voice:$('voice').value, brand:$('brand').value, look:$('look').value, wmOn:$('wmOn').value==='true', wmText:$('wmText').value, music:$('music').value, hook:$('hook').value, script:$('script').value, tags:$('tags').value, caption:$('caption').value, ttDesc:$('ttDesc').value, render_service:$('renderEngine').value, render_mode:$('postMode').value, captions_on:$('captionsOn').value==='true', hook_overlay_on:$('hookOverlayOn').value==='true', hook_pos:$('hookStyle').value, scheduled_at: toIso($('date').value, $('timeSel').value), status:'INIT', file_url:null, link:'' }; const r=await api('insert','videos',{values:p}); if(r.error){ alert('Fehler: '+r.error); return;} alert('Gespeichert'); loadVideos(); };
+
+  // ===== Videos – Bibliothek
+  async function loadVideos(){ const body=$('libRows'); body.innerHTML='<tr><td colspan="6" class="hint">Lade…</td></tr>'; const r=await api('select','videos',{order:{column:'scheduled_at',dir:'desc'}}); let list=r.data||[]; const f=$('statusFilter').value; if(f!=='ALLE') list=list.filter(v=> (v.status||'INIT')===f); body.innerHTML = list.length? list.map(v=>`<tr><td>${esc(new Date(v.scheduled_at||Date.now()).toLocaleString())}</td><td>${esc(v.platform)}</td><td>${esc(v.hook||'')}</td><td>${esc(v.status||'INIT')}${(v.status==='ERROR'&&v.link)?' – '+esc(v.link):''}</td><td>${v.file_url?`<a href="${esc(v.file_url)}" target="_blank">Download</a>`:'—'}</td><td><button class="ghost" data-id="${v.id}" data-act="start">Start jetzt</button> <button class="ghost" data-id="${v.id}" data-act="posted">Als gepostet</button> <button class="danger" data-id="${v.id}" data-act="del">Löschen</button></td></tr>`).join('') : '<tr><td colspan="6" class="hint">Keine Einträge</td></tr>'; body.querySelectorAll('button').forEach(b=> b.onclick=onRowAction); }
+  $('btnReload').onclick=loadVideos; $('statusFilter').onchange=loadVideos;
+
+  async function onRowAction(e){ const id=e.target.dataset.id, act=e.target.dataset.act;
+    if(act==='start'){ await api('update','videos',{values:{status:'QUEUED', scheduled_at:new Date().toISOString()}, where:{id}}); alert('Job in Queue'); loadVideos(); }
+    else if(act==='posted'){ await api('update','videos',{values:{status:'POSTED'}, where:{id}}); loadVideos(); }
+    else if(act==='del'){ if(!confirm('Eintrag löschen?')) return; await api('delete','videos',{where:{id}}); loadVideos(); }
+  }
+
+  // ===== CSV Import (Bulk)
+  $('btnImport').onclick=()=> $('csvFile').click();
+  $('csvFile').addEventListener('change', async (e)=>{
+    const file=e.target.files[0]; if(!file) return;
+    try{
       const text=await file.text();
-      const rows=text.split(/\\r?\\n/).filter(l=>l.trim()).map(l=>l.split(','));
-      const headers=rows.shift().map(h=>h.trim());
-      const vals=rows.map(r=>{let o={};headers.forEach((h,i)=>o[h]=r[i]);return o;});
-      for(const v of vals){await api('insert','videos',{values:v});}
-      loadVideos();
-    });
+      const rows=parseCSV(text); if(!rows.length) return alert('CSV leer');
+      const header=rows[0].map(h=>h.trim().toLowerCase());
+      const body=rows.slice(1).filter(r=> r.some(c=> (c||'').trim()!==''));
+      const idx=n=> header.indexOf(n);
+      const get=(r,n)=>{const i=idx(n); return i>=0? r[i].replace(/^"|"$/g,'') : '';};
+      const toBool=v=> String(v).toLowerCase().trim()==='true'||v==='1'||v===true;
 
-    loadVideos();
-  </script>
+      const payloads=body.map(r=>({
+        platform: get(r,'platform')||'tiktok',
+        account_id: null,
+        format: get(r,'format')||'post',
+        ttMode: get(r,'ttmode')||'draft',
+        avatar: get(r,'avatar')||'Avatar 1',
+        voice: get(r,'voice')||'Katja (w, DE)',
+        brand: get(r,'brand')||'#00D09C',
+        look: get(r,'look')||'',
+        wmOn: toBool(get(r,'wmon')||'true'),
+        wmText: get(r,'wmtext')||'@deinusername',
+        music: get(r,'music')||'Corporate Future Bass',
+        hook: get(r,'hook'),
+        script: get(r,'script'),
+        tags: get(r,'tags')||'#kibusiness #digitalbusiness #futureofwork #arbeitmitki #onlinebusiness',
+        caption: get(r,'caption')||'',
+        ttDesc: get(r,'ttdesc')||'',
+        render_service: get(r,'render_service')||'heygen',
+        render_mode: get(r,'render_mode')||'download_only',
+        captions_on: toBool(get(r,'captions_on')||'true'),
+        hook_overlay_on: toBool(get(r,'hook_overlay_on')||'true'),
+        hook_pos: get(r,'hook_pos')||'top',
+        scheduled_at: get(r,'scheduled_at')||null,
+        status: get(r,'status')||'INIT',
+        file_url: null, link:''
+      }));
+      const r=await api('insert','videos',{values:payloads, bulk:true});
+      alert(`Import ok: ${(r.data?.length)||payloads.length} Zeilen`);
+      loadVideos();
+    }catch(err){ alert('Import-Fehler: '+(err.message||err)); }
+    finally{ e.target.value=''; }
+  });
+
+  function parseCSV(str){
+    const out=[]; let row=[]; let cur=''; let q=false;
+    for(let i=0;i<str.length;i++){ const c=str[i];
+      if(c==='\"'){ if(q && str[i+1]==='\"'){cur+='\"';i++;} else q=!q; }
+      else if(c===',' && !q){ row.push(cur); cur=''; }
+      else if((c==='\n'||c==='\r') && !q){ if(cur!==''||row.length){ row.push(cur); out.push(row); row=[]; cur=''; } }
+      else cur+=c;
+    }
+    if(cur!==''||row.length){ row.push(cur); out.push(row); }
+    return out;
+  }
+
+  // Music presets
+  ['Corporate Future Bass','Uplifting Motivational','Dreams','Upbeat Technology','Epic Inspire','Pop Dance','LoFi Chillhop','Summer Vibes','Keine Musik','App-Sound (Draft)'].forEach(m=>{ const o=document.createElement('option'); o.textContent=m; $('music').appendChild(o); });
+
+  // Start
+  loadAccountsToComposer(); loadVideos();
+</script>
 </body>
 </html>
