@@ -113,6 +113,7 @@
           <select id="statusFilter"><option>ALLE</option><option>INIT</option><option>QUEUED</option><option>RENDERING</option><option>READY</option><option>POSTED</option><option>ERROR</option></select>
         </label>
         <button id="btnReload" class="ghost">Neu laden</button>
+        <button id="btnRunWorker" class="ghost">Worker starten</button>
         <input type="file" id="csvFile" accept=".csv"/>
         <button id="btnImport" class="ghost">CSV importieren</button>
       </div>
@@ -177,11 +178,11 @@
   $('btnGoComposer').onclick=$('btnBack').onclick=()=>{ viewSettings.classList.add('hidden'); viewMain.classList.remove('hidden'); loadAccountsToComposer(); loadVideos(); };
 
   // ===== Time defaults 08–23
-  const timeSel=$('timeSel'); for(let h=8;h<=23;h++){const v=String(h).padStart(2,'0')+':00'; const o=document.createElement('option'); o.value=v;o.textContent=v; timeSel.appendChild(o);}
+  const timeSel=$('timeSel'); for(let h=8;h<=23;h++){const v=String(h).padStart(2,'0')+':00'; const o=document.createElement('option'); o.value=v;o.textContent=v; timeSel.appendChild(o);} 
   const now=new Date(); $('date').value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
   timeSel.value = String(Math.min(23,Math.max(8,now.getHours()+1))).padStart(2,'0')+':00';
 
-  // ===== API wrapper (IMPORTANT: uses 'action')
+  // ===== API wrapper (uses 'action')
   async function api(action, table, payload={}){
     const res = await fetch('/api/db', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action, table, ...payload })});
     const txt = await res.text(); let json; try{ json=JSON.parse(txt);}catch{ json={error:`Invalid JSON (${res.status})`, raw:txt};}
@@ -204,13 +205,15 @@
 
   // ===== Videos – Bibliothek
   async function loadVideos(){ const body=$('libRows'); body.innerHTML='<tr><td colspan="6" class="hint">Lade…</td></tr>'; const r=await api('select','videos',{order:{column:'scheduled_at',dir:'desc'}}); let list=r.data||[]; const f=$('statusFilter').value; if(f!=='ALLE') list=list.filter(v=> (v.status||'INIT')===f); body.innerHTML = list.length? list.map(v=>`<tr><td>${esc(new Date(v.scheduled_at||Date.now()).toLocaleString())}</td><td>${esc(v.platform)}</td><td>${esc(v.hook||'')}</td><td>${esc(v.status||'INIT')}${(v.status==='ERROR'&&v.link)?' – '+esc(v.link):''}</td><td>${v.file_url?`<a href="${esc(v.file_url)}" target="_blank">Download</a>`:'—'}</td><td><button class="ghost" data-id="${v.id}" data-act="start">Start jetzt</button> <button class="ghost" data-id="${v.id}" data-act="posted">Als gepostet</button> <button class="danger" data-id="${v.id}" data-act="del">Löschen</button></td></tr>`).join('') : '<tr><td colspan="6" class="hint">Keine Einträge</td></tr>'; body.querySelectorAll('button').forEach(b=> b.onclick=onRowAction); }
-  $('btnReload').onclick=loadVideos; $('statusFilter').onchange=loadVideos;
+  $('btnReload').onclick=loadVideos; $('statusFilter').onchange=loadVideos; $('btnRunWorker').onclick=runWorker;
 
   async function onRowAction(e){ const id=e.target.dataset.id, act=e.target.dataset.act;
-    if(act==='start'){ await api('update','videos',{values:{status:'QUEUED', scheduled_at:new Date().toISOString()}, where:{id}}); alert('Job in Queue'); loadVideos(); }
+    if(act==='start'){ await api('update','videos',{values:{status:'QUEUED', scheduled_at:new Date().toISOString()}, where:{id}}); await runWorker(true); loadVideos(); }
     else if(act==='posted'){ await api('update','videos',{values:{status:'POSTED'}, where:{id}}); loadVideos(); }
     else if(act==='del'){ if(!confirm('Eintrag löschen?')) return; await api('delete','videos',{where:{id}}); loadVideos(); }
   }
+
+  async function runWorker(silent){ try{ const r=await fetch('/api/worker'); const j=await r.json().catch(()=>({})); if(!silent) alert(`Worker: ${j.processed ?? 0} verarbeitet`); } catch(e){ if(!silent) alert('Worker-Fehler'); } }
 
   // ===== CSV Import (Bulk)
   $('btnImport').onclick=()=> $('csvFile').click();
@@ -224,33 +227,7 @@
       const idx=n=> header.indexOf(n);
       const get=(r,n)=>{const i=idx(n); return i>=0? r[i].replace(/^"|"$/g,'') : '';};
       const toBool=v=> String(v).toLowerCase().trim()==='true'||v==='1'||v===true;
-
-      const payloads=body.map(r=>({
-        platform: get(r,'platform')||'tiktok',
-        account_id: null,
-        format: get(r,'format')||'post',
-        ttMode: get(r,'ttmode')||'draft',
-        avatar: get(r,'avatar')||'Avatar 1',
-        voice: get(r,'voice')||'Katja (w, DE)',
-        brand: get(r,'brand')||'#00D09C',
-        look: get(r,'look')||'',
-        wmOn: toBool(get(r,'wmon')||'true'),
-        wmText: get(r,'wmtext')||'@deinusername',
-        music: get(r,'music')||'Corporate Future Bass',
-        hook: get(r,'hook'),
-        script: get(r,'script'),
-        tags: get(r,'tags')||'#kibusiness #digitalbusiness #futureofwork #arbeitmitki #onlinebusiness',
-        caption: get(r,'caption')||'',
-        ttDesc: get(r,'ttdesc')||'',
-        render_service: get(r,'render_service')||'heygen',
-        render_mode: get(r,'render_mode')||'download_only',
-        captions_on: toBool(get(r,'captions_on')||'true'),
-        hook_overlay_on: toBool(get(r,'hook_overlay_on')||'true'),
-        hook_pos: get(r,'hook_pos')||'top',
-        scheduled_at: get(r,'scheduled_at')||null,
-        status: get(r,'status')||'INIT',
-        file_url: null, link:''
-      }));
+      const payloads=body.map(r=>({ platform:get(r,'platform')||'tiktok', account_id:null, format:get(r,'format')||'post', ttMode:get(r,'ttmode')||'draft', avatar:get(r,'avatar')||'Avatar 1', voice:get(r,'voice')||'Katja (w, DE)', brand:get(r,'brand')||'#00D09C', look:get(r,'look')||'', wmOn:toBool(get(r,'wmon')||'true'), wmText:get(r,'wmtext')||'@deinusername', music:get(r,'music')||'Corporate Future Bass', hook:get(r,'hook'), script:get(r,'script'), tags:get(r,'tags')||'#kibusiness #digitalbusiness #futureofwork #arbeitmitki #onlinebusiness', caption:get(r,'caption')||'', ttDesc:get(r,'ttdesc')||'', render_service:get(r,'render_service')||'heygen', render_mode:get(r,'render_mode')||'download_only', captions_on:toBool(get(r,'captions_on')||'true'), hook_overlay_on:toBool(get(r,'hook_overlay_on')||'true'), hook_pos:get(r,'hook_pos')||'top', scheduled_at:get(r,'scheduled_at')||null, status:get(r,'status')||'INIT', file_url:null, link:'' }));
       const r=await api('insert','videos',{values:payloads, bulk:true});
       alert(`Import ok: ${(r.data?.length)||payloads.length} Zeilen`);
       loadVideos();
@@ -258,17 +235,7 @@
     finally{ e.target.value=''; }
   });
 
-  function parseCSV(str){
-    const out=[]; let row=[]; let cur=''; let q=false;
-    for(let i=0;i<str.length;i++){ const c=str[i];
-      if(c==='\"'){ if(q && str[i+1]==='\"'){cur+='\"';i++;} else q=!q; }
-      else if(c===',' && !q){ row.push(cur); cur=''; }
-      else if((c==='\n'||c==='\r') && !q){ if(cur!==''||row.length){ row.push(cur); out.push(row); row=[]; cur=''; } }
-      else cur+=c;
-    }
-    if(cur!==''||row.length){ row.push(cur); out.push(row); }
-    return out;
-  }
+  function parseCSV(str){ const out=[]; let row=[]; let cur=''; let q=false; for(let i=0;i<str.length;i++){ const c=str[i]; if(c==='"'){ if(q && str[i+1]==='"'){cur+='"';i++;} else q=!q; } else if(c===',' && !q){ row.push(cur); cur=''; } else if((c==='\n'||c==='\r') && !q){ if(cur!==''||row.length){ row.push(cur); out.push(row); row=[]; cur=''; } } else cur+=c; } if(cur!==''||row.length){ row.push(cur); out.push(row); } return out; }
 
   // Music presets
   ['Corporate Future Bass','Uplifting Motivational','Dreams','Upbeat Technology','Epic Inspire','Pop Dance','LoFi Chillhop','Summer Vibes','Keine Musik','App-Sound (Draft)'].forEach(m=>{ const o=document.createElement('option'); o.textContent=m; $('music').appendChild(o); });
